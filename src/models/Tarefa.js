@@ -56,8 +56,8 @@ const Tarefa = sequelize.define("tarefas", {
         }
     }
 }, {
-    tableName: "tarefas",      // ← ISSO VAI AQUI
-    timestamps: true           // ← ISSO VAI AQUI
+    tableName: "tarefas",    
+    timestamps: true         
 });
 
 module.exports = Tarefa;

@@ -3,16 +3,21 @@ const Doacao = require("../models/Doacoes");
 const Campanha = require("../models/Campanha");
 const HistoricoTransacao = require("../models/HistoricoTransacao");
 const { verificarProgressoMissao } = require("./MissoesController"); // Se doação for parte de uma missão
+const sequelize = require ("../config/database")
 
-// @desc    Realizar uma doação para uma campanha
+
 exports.doar = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const { id_crianca, id_campanha, valor } = req.body;
-        const XP_DOACAO = 15; // Constante, ou pode vir de uma config
+        const XP_DOACAO = req.body;
 
         const crianca = await Crianca.findByPk(id_crianca, { transaction });
         const campanha = await Campanha.findByPk(id_campanha, { transaction });
+
+        if(!campanha) {
+            campanha.date_fim == false
+        }
 
         if (!crianca || !campanha) {
             await transaction.rollback();

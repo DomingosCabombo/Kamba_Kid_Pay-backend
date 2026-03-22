@@ -1,7 +1,8 @@
 const  Crianca = require("../models/Criancas");
 const HistoricoTransacao = require("../models/HistoricoTransacao");
+const sequelize = require ("../config/database")
 
-// @desc    Transferir de 'gastar' para 'poupar'
+
 exports.poupar = async (req, res) => {
     try {
         const { id_crianca, valor } = req.body;
@@ -42,7 +43,6 @@ exports.poupar = async (req, res) => {
     }
 };
 
-// @desc    Gastar do saldo 'gastar'
 exports.gastar = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
@@ -74,7 +74,6 @@ exports.gastar = async (req, res) => {
     }
 };
 
-// @desc    Aplicar bónus ao saldo 'poupar' (ex: juros)
 exports.bonusPoupanca = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {

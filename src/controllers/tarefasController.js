@@ -1,59 +1,46 @@
-// controllers/tarefasController.js
 const Tarefa = require("../models/Tarefa");
 const Criancas = require("../models/Criancas");
 const Responsavel = require("../models/Responsavel");
 const Historico = require("../models/HistoricoTransacao");
-const missaoService = require("../services/missaoService");
-
+const Missao = require("../models/Missoes");
+const ProgressoMissao = require("../models/ProgressoMissao");
+const sequelize = require("../config/database");
 
 exports.criarTarefa = async (req, res) => {
     try {
         const { titulo, descricao, recompensa, id_crianca, id_responsavel, id_missao } = req.body;
 
-        console.log("📝 Dados recebidos:", { titulo, id_missao }); // LOG PARA DEBUG
+        // console.log(" Dados recebidos:", { titulo, id_missao });
 
-        // ⚠️ VALIDAÇÃO CRÍTICA
+        // ⚠️ VALIDAÇÃO: Se veio id_missao, verificar se é do tipo tarefa_casa
         if (id_missao) {
-            // Buscar a missão
             const missao = await Missao.findByPk(id_missao);
-            
-            console.log("🔍 Missão encontrada:", missao ? {
-                id: missao.id_missao,
-                titulo: missao.titulo,
-                tipo: missao.tipo_missao
-            } : "NÃO ENCONTRADA");
 
             if (!missao) {
-                return res.status(400).json({ 
-                    erro: "Missão não encontrada",
-                    detalhe: `ID ${id_missao} não existe no banco`
+                return res.status(400).json({
+                    erro: "Missão não encontrada"
                 });
             }
-            
-            // ⚠️ VALIDAÇÃO DO TIPO
+
             if (missao.tipo_missao !== 'tarefa_casa') {
-                return res.status(400).json({ 
-                    erro: "Esta missão não é uma tarefa doméstica",
+                return res.status(400).json({
+                    erro: "O ID da missão não corresponde a uma tarefa doméstica",
                     missao_encontrada: {
                         id: missao.id_missao,
                         titulo: missao.titulo,
-                        tipo: missao.tipo_missao,
-                        tipo_esperado: 'tarefa_casa'
+                        tipo: missao.tipo_missao
                     }
                 });
             }
 
-            // Validação adicional: missão pertence ao responsável?
+            // Verificar se a missão pertence ao responsável
             if (missao.id_responsavel && missao.id_responsavel !== id_responsavel) {
                 return res.status(400).json({
-                    erro: "Esta missão não pertence a este responsável",
-                    missao_responsavel: missao.id_responsavel,
-                    seu_responsavel: id_responsavel
+                    erro: "Esta missão não pertence ao responsável informado"
                 });
             }
         }
 
-        // Se passou por todas validações, cria a tarefa
         const tarefa = await Tarefa.create({
             titulo,
             descricao,
@@ -76,25 +63,45 @@ exports.criarTarefa = async (req, res) => {
     }
 };
 
-// enviar comprovacao com FOTO (criança)
 exports.enviarComprovacao = async (req, res) => {
     try {
         const { id_tarefa } = req.body;
+
+        // 🔒 Validação básica
+        if (!id_tarefa) {
+            return res.status(400).json({ erro: "ID da tarefa é obrigatório" });
+        }
 
         if (!req.file) {
             return res.status(400).json({ erro: "Envie uma foto da tarefa realizada" });
         }
 
-        await Tarefa.update({
+        // 🔍 Verificar se a tarefa existe
+        const tarefa = await Tarefa.findByPk(id_tarefa);
+
+        if (!tarefa) {
+            return res.status(404).json({
+                erro: "Tarefa não encontrada"
+            });
+        }
+
+        if (tarefa.status !== "pendente") {
+            return res.status(400).json({
+                erro: "Esta tarefa já foi enviada ou processada"
+            });
+        }
+
+        // 🔄 Atualizar
+        await tarefa.update({
             foto_comprovacao: req.file.filename,
             status: "aguardando_aprovacao"
-        }, {
-            where: { id_tarefa }
         });
+
 
         res.json({
             mensagem: "📸 Comprovação enviada! Aguardando aprovação do responsável.",
-            imagem: `/uploads/${req.file.filename}`
+            imagem: `/uploads/${req.file.filename}`,
+            tarefa_id: tarefa.id_tarefa
         });
 
     } catch (error) {
@@ -102,10 +109,9 @@ exports.enviarComprovacao = async (req, res) => {
     }
 };
 
-// aprovar tarefa (responsável)
 exports.aprovarTarefa = async (req, res) => {
     const transaction = await sequelize.transaction();
-    
+
     try {
         const { id_tarefa } = req.params;
 
@@ -120,43 +126,21 @@ exports.aprovarTarefa = async (req, res) => {
         const responsavel = await Responsavel.findByPk(crianca.id_responsavel, { transaction });
 
         // Calcular divisão nos potes
-        const valor = tarefa.recompensa;
-        const saldos = {
-            gastar: parseFloat(crianca.saldo_gastar) + (valor * responsavel.perc_gastar / 100),
-            poupar: parseFloat(crianca.saldo_poupar) + (valor * responsavel.perc_poupar / 100),
-            ajudar: parseFloat(crianca.saldo_ajudar) + (valor * responsavel.perc_ajudar / 100)
-        };
+        const valor = parseFloat(tarefa.recompensa);
+        const gastar = valor * (responsavel.perc_gastar / 100);
+        const poupar = valor * (responsavel.perc_poupar / 100);
+        const ajudar = valor * (responsavel.perc_ajudar / 100);
+
+        // Atualizar saldos 
+        crianca.saldo_gastar = parseFloat(crianca.saldo_gastar) + gastar;
+        crianca.saldo_poupar = parseFloat(crianca.saldo_poupar) + poupar;
+        crianca.saldo_ajudar = parseFloat(crianca.saldo_ajudar) + ajudar;
+        await crianca.save({ transaction });
 
         // Atualizar tarefa
         tarefa.status = "aprovada";
         await tarefa.save({ transaction });
 
-        // Se esta tarefa está ligada a uma MISSÃO
-        if (tarefa.id_missao) {
-            await transaction.commit(); // Commita antes de chamar o service
-            
-            // Chama o service para finalizar a missão (já cria histórico lá dentro)
-            const resultado = await missaoService.finalizarMissao(
-                crianca.id_crianca,
-                tarefa.id_missao,
-                { saldos } // Passa os saldos calculados
-            );
-
-            return res.json({
-                mensagem: "✅ Tarefa aprovada e missão concluída!",
-                valor_recebido: valor,
-                divisao: {
-                    gastar: valor * responsavel.perc_gastar / 100,
-                    poupar: valor * responsavel.perc_poupar / 100,
-                    ajudar: valor * responsavel.perc_ajudar / 100
-                },
-                ...resultado
-            });
-        } 
-        
-        // Se NÃO é missão (tarefa avulsa)
-        await crianca.update(saldos, { transaction });
-        
         // Criar histórico
         await Historico.create({
             id_crianca: crianca.id_crianca,
@@ -165,25 +149,40 @@ exports.aprovarTarefa = async (req, res) => {
             descricao: `Recompensa: ${tarefa.titulo}`
         }, { transaction });
 
+        // Se tem missão, apenas marcar como concluída (SEM XP)
+        if (tarefa.id_missao) {
+            const progresso = await ProgressoMissao.findOne({
+                where: { id_crianca: crianca.id_crianca, id_missao: tarefa.id_missao },
+                transaction
+            });
+
+            if (progresso && progresso.estado !== 'concluida') {
+                progresso.estado = 'concluida';
+                progresso.data_conclusao = new Date();
+                await progresso.save({ transaction });
+            }
+        }
+
         await transaction.commit();
 
         res.json({
             mensagem: "✅ Tarefa aprovada!",
             valor_recebido: valor,
+            divisao: { gastar, poupar, ajudar },
             novos_saldos: {
-                gastar: saldos.gastar,
-                poupar: saldos.poupar,
-                ajudar: saldos.ajudar
+                gastar: crianca.saldo_gastar,
+                poupar: crianca.saldo_poupar,
+                ajudar: crianca.saldo_ajudar
             }
         });
 
     } catch (error) {
+        console.error("❌ Erro ao aprovar tarefa:", error);
         await transaction.rollback();
         res.status(500).json({ erro: error.message });
     }
 };
 
-// rejeitar tarefa (responsável)
 exports.rejeitarTarefa = async (req, res) => {
     try {
         const { id_tarefa } = req.params;
@@ -203,7 +202,6 @@ exports.rejeitarTarefa = async (req, res) => {
     }
 };
 
-// listar tarefas da crianca
 exports.listarTarefasCrianca = async (req, res) => {
     try {
         const { id_crianca } = req.params;

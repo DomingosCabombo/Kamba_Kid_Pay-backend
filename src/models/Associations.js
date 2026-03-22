@@ -1,4 +1,3 @@
-// src/models/index.js
 const sequelize = require("../config/database");
 
 // Importar todos os models
@@ -11,7 +10,6 @@ const Quiz = require("./Quiz");
 const Missao = require("./Missoes");
 const QuizOpcao = require("./QuizOpcao");
 const RespostaUsuario = require("./RespostaUsuario");
-// ⚠️ MUDANÇA AQUI: importar o objeto e desestruturar
 const { Conteudo, ConteudoAssistido } = require("./VideoAssistido");
 const Tarefa = require("./Tarefa");
 const CofreMeta = require("./CofreMeta");
@@ -30,8 +28,8 @@ const db = {
     Missao,
     QuizOpcao,
     RespostaUsuario,
-    Conteudo,           // ← AGORA FUNCIONA!
-    ConteudoAssistido,  // ← AGORA FUNCIONA!
+    Conteudo,           
+    ConteudoAssistido,
     Tarefa,
     CofreMeta,
     Mascote,

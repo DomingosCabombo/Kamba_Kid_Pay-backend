@@ -142,7 +142,7 @@
             tarefa: `
                 <div class="form-group">
                     <label>ID da Tarefa:</label>
-                    <input type="number" id="id_ref" value="1">
+                    <input type="number" id="id_tarefa" value="1">
                 </div>
                 <div class="form-group">
                     <label>ID da Criança:</label>
@@ -208,10 +208,11 @@
             let url = '';
             
             if (tipo === 'tarefa') {
-                const id_ref = document.getElementById('id_ref').value;
+                const id_tarefa = document.getElementById('id_tarefa').value;
                 const id_crianca = document.getElementById('id_crianca').value;
                 formData.append('id_crianca', id_crianca);
-                url = `http://localhost:3000/tarefas/enviar-comprovacao/${id_ref}`;
+                formData.append('id_tarefa', id_tarefa);
+                url = `http://localhost:3000/tarefas/comprovacao`;
             } 
             else if (tipo === 'campanha') {
                 const nome = document.getElementById('nome').value;
