@@ -1,14 +1,10 @@
 const { Sequelize } = require("sequelize");
+const path = require("path");
 
-const sequelize = new Sequelize(
-  "kamba_kid_pay3",
-  "root",
-  "",
-  {
-    host: "localhost",
-    dialect: "mysql",
-    logging: false
-  },
-);
+const sequelize = new Sequelize({
+  dialect: "sqlite",
+  storage: path.join(__dirname, "../../database.sqlite"),
+  logging: false
+});
 
 module.exports = sequelize;
