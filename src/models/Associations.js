@@ -10,6 +10,8 @@ const Tarefa = require("./Tarefa");
 const Historico = require("./HistoricoTransacao");
 const ShopItem = require("./ShopItem");
 const CriancaShopItem = require("./CriancaShopItem");
+const Quiz = require("./Quiz")
+const QuizOpcao = require("./QuizOpcao")
 
 
 const db = {
@@ -25,6 +27,8 @@ const db = {
     Historico,
     ShopItem,
     CriancaShopItem,
+    Quiz,
+    QuizOpcao,
     sequelize
 };
 
@@ -79,6 +83,12 @@ db.CriancaShopItem.belongsTo(db.ShopItem, { foreignKey: "id_item", as: "item" })
 // CRIANÇA -> CRIANCA_SHOP_ITEM
 db.Criancas.hasMany(db.CriancaShopItem, { foreignKey: "id_crianca", as: "itens_comprados" });
 db.CriancaShopItem.belongsTo(db.Criancas, { foreignKey: "id_crianca", as: "crianca" });
+
+// Associações do Quiz
+db.Missao.hasOne(Quiz, { foreignKey: "id_missao" });
+db.Quiz.belongsTo(Missao, { foreignKey: "id_missao" });
+db.Quiz.hasMany(QuizOpcao, { foreignKey: "id_quiz" });
+db.QuizOpcao.belongsTo(Quiz, { foreignKey: "id_quiz" });
 
 console.log("Todas as associations foram carregadas com sucesso!");
 

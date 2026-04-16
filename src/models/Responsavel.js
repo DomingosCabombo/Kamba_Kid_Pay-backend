@@ -36,6 +36,10 @@ const Responsavel = sequelize.define("Responsavel", {
     municipio: {
         type: DataTypes.STRING(100),
         allowNull: true
+    }, ativo: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+        allowNull: true
     },
     config_valor_mesada: {
         type: DataTypes.DECIMAL(10, 2),

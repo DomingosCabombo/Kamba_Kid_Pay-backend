@@ -83,7 +83,7 @@ const ConteudoAssistido = sequelize.define("conteudo_assistido", {
     timestamps: true
 });
 
-//Definir as associations AQUI mesmo
+
 Conteudo.hasMany(ConteudoAssistido, { foreignKey: "id_conteudo" });
 ConteudoAssistido.belongsTo(Conteudo, { foreignKey: "id_conteudo" });
 

@@ -32,6 +32,11 @@ const Crianca = sequelize.define("crianca", {
         type: DataTypes.STRING(100),
         allowNull: true
     },
+    ativo: {
+        type: DataTypes.BOOLEAN,
+        defaultValue: true,
+        allowNull: true
+    },
     saldo_gastar: {
         type: DataTypes.DECIMAL(10,2),
         defaultValue: 0.00

@@ -14,6 +14,7 @@ const financeiroRoutes = require("./routes/accaofinanceiraRoutes");
 const shopRoutes = require("./routes/shopRoutes");
 const educationalRoutes = require("./routes/educationalRoutes");
 const relatoriosRoutes = require("./routes/relatoriosRoutes");
+const adminRoutes = require("./routes/adminRoutes");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
@@ -41,7 +42,7 @@ app.use("/api/financeiro", financeiroRoutes);
 app.use("/api/shop", shopRoutes);
 app.use("/api/educational-content", educationalRoutes);
 app.use("/api/reports", relatoriosRoutes);
-
+app.use("/api/admin", adminRoutes);
 
 
 module.exports = app;

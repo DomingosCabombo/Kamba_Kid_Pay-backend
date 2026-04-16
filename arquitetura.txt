@@ -360,34 +360,25 @@ GET /api/parent/children/1/exportar-relatorio?formato=csv&periodo=anual&ano=2025
 | `GET /api/parent/children/:childId/exportar-relatorio 
 
 ---
+ EXEMPLOS DE REQUISIÇÃO
 
-## 🚀 EXEMPLOS DE USO NO FRONTEND
+Estatísticas Diárias
+GET /api/parent/children/1/stats?periodo=diario&data=2026-03-29
 
-```javascript
-// 1. Ver estatísticas de Março 2025
-const stats = await api.get('/parent/children/1/stats', {
-    params: { periodo: 'mensal', ano: 2025, mes: 3 }
-});
+Estatísticas Semanais
+GET /api/parent/children/1/stats?periodo=semanal&data=2026-03-29
 
-// 2. Ver evolução anual
-const evolucao = await api.get('/parent/children/1/evolucao', {
-    params: { periodo: 'anual', ano: 2025 }
-});
+Estatísticas Mensais
+GET /api/parent/children/1/stats?periodo=mensal&data=2026-03
 
-// 3. Ver transações de um período
-const transacoes = await api.get('/parent/children/1/transacoes', {
-    params: { 
-        data_inicio: '2025-01-01', 
-        data_fim: '2025-12-31',
-        tipo: 'tarefa'
-    }
-});
+Estatísticas Anuais
+GET /api/parent/children/1/stats?periodo=anual&data=2026
 
-// 4. Ver anos disponíveis
-const anos = await api.get('/parent/children/1/anos-disponiveis');
+Histórico de Transações (Ano anterior)
+GET /api/parent/children/1/transacoes?inicio=2025-01-01&fim=2025-12-31
 
-// 5. Exportar relatório
-window.open(`/api/parent/children/1/exportar-relatorio?formato=pdf&periodo=anual&ano=2025`, '_blank');
-```
+Resumo Mensal do Ano
+GET /api/parent/children/1/resumo-mensal?ano=2026
 
-Agora o responsável pode visualizar estatísticas diárias, semanais, mensais, anuais e aceder a registos de anos anteriores! 📊🚀
+Evolução de Saldo
+GET /api/parent/children/1/evolucao-saldo?periodo=anual&ano=2026

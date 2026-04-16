@@ -624,12 +624,12 @@ exports.childFinance = async (req, res) => {
 // ============================================
 // GET /api/parent/children/:childId/stats (com filtro de período)
 // ============================================
+
 exports.childStatsWithPeriod = async (req, res) => {
     try {
         const { childId } = req.params;
         const { periodo, data } = req.query;
 
-        // Validar período
         const periodosValidos = ['diario', 'semanal', 'mensal', 'anual'];
         if (!periodosValidos.includes(periodo)) {
             return res.status(400).json({
@@ -670,7 +670,6 @@ exports.childStatsWithPeriod = async (req, res) => {
                 break;
         }
 
-        // Verificar se a criança existe e pertence ao responsável
         const crianca = await Criancas.findByPk(childId);
         if (!crianca || crianca.id_responsavel !== req.usuario.id) {
             return res.status(404).json({
@@ -679,18 +678,17 @@ exports.childStatsWithPeriod = async (req, res) => {
             });
         }
 
-        // Buscar transações do período
+        // 🔥 CORREÇÃO: usar 'createdAt' em vez de 'data_hora'
         const transacoes = await Historico.findAll({
             where: {
                 id_crianca: childId,
-                data_hora: {
+                createdAt: {
                     [Op.between]: [inicio, fim]
                 }
             },
-            order: [['data_hora', 'ASC']]
+            order: [['createdAt', 'ASC']]
         });
 
-        // Calcular estatísticas
         const stats = calcularEstatisticas(transacoes, crianca, periodo, inicio, fim);
 
         res.json(stats);
@@ -704,6 +702,7 @@ exports.childStatsWithPeriod = async (req, res) => {
 // ============================================
 // GET /api/parent/children/:childId/transacoes
 // ============================================
+
 exports.getTransacoes = async (req, res) => {
     try {
         const { childId } = req.params;
@@ -720,7 +719,8 @@ exports.getTransacoes = async (req, res) => {
         const where = { id_crianca: childId };
         
         if (inicio && fim) {
-            where.data_hora = {
+            // 🔥 CORREÇÃO: usar 'createdAt' em vez de 'data_hora'
+            where.createdAt = {
                 [Op.between]: [new Date(inicio), new Date(fim)]
             };
         }
@@ -731,7 +731,7 @@ exports.getTransacoes = async (req, res) => {
 
         const transacoes = await Historico.findAll({
             where,
-            order: [['data_hora', 'DESC']]
+            order: [['createdAt', 'DESC']]  // 🔥 CORREÇÃO: usar 'createdAt'
         });
 
         res.json({
@@ -742,7 +742,7 @@ exports.getTransacoes = async (req, res) => {
                 tipo: t.tipo,
                 valor: parseFloat(t.valor),
                 descricao: t.descricao,
-                data: t.data_hora,
+                data: t.createdAt,  // 🔥 CORREÇÃO: usar 'createdAt'
                 pote_afetado: mapearPoteAfetado(t.tipo)
             }))
         });
@@ -756,6 +756,7 @@ exports.getTransacoes = async (req, res) => {
 // ============================================
 // GET /api/parent/children/:childId/resumo-mensal
 // ============================================
+
 exports.resumoMensal = async (req, res) => {
     try {
         const { childId } = req.params;
@@ -779,10 +780,11 @@ exports.resumoMensal = async (req, res) => {
             const fim = new Date(anoInt, mes, 0);
             fim.setHours(23, 59, 59, 999);
 
+            // 🔥 CORREÇÃO: usar 'createdAt' em vez de 'data_hora'
             const transacoes = await Historico.findAll({
                 where: {
                     id_crianca: childId,
-                    data_hora: { [Op.between]: [inicio, fim] }
+                    createdAt: { [Op.between]: [inicio, fim] }
                 }
             });
 
@@ -824,6 +826,7 @@ exports.resumoMensal = async (req, res) => {
 // ============================================
 // GET /api/parent/children/:childId/evolucao-saldo
 // ============================================
+
 exports.evolucaoSaldo = async (req, res) => {
     try {
         const { childId } = req.params;
@@ -846,10 +849,11 @@ exports.evolucaoSaldo = async (req, res) => {
                 const fim = new Date(anoInt, mes, 0);
                 fim.setHours(23, 59, 59, 999);
 
+                // 🔥 CORREÇÃO: usar 'createdAt' em vez de 'data_hora'
                 const transacoes = await Historico.findAll({
                     where: {
                         id_crianca: childId,
-                        data_hora: { [Op.lte]: fim }
+                        createdAt: { [Op.lte]: fim }
                     }
                 });
 
@@ -904,6 +908,8 @@ function obterNomeMes(mes) {
     ];
     return meses[mes - 1];
 }
+
+// controllers/parentController.js - calcularEstatisticas
 
 function calcularEstatisticas(transacoes, crianca, periodo, inicio, fim) {
     const ganhou = transacoes.filter(t => t.tipo === 'tarefa' || t.tipo === 'bonus_gestao')
