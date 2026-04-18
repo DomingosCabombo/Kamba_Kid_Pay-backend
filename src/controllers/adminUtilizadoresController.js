@@ -163,9 +163,14 @@ exports.listarCriancas = async (req, res) => {
             provincia: c.provincia,
             municipio: c.municipio,
             tipo: "Criança",
-            status: "Ativo",
+            status: c.ativo !== false ? "Ativo" : "Inativo",
             dataCadastro: c.createdAt,
-            saldoKz: parseFloat(c.saldo_gastar) + parseFloat(c.saldo_poupar) + parseFloat(c.saldo_ajudar),
+            idade: c.idade,
+            nivel: c.nivel,
+            saldo_gastar: parseFloat(c.saldo_gastar || 0),
+            saldo_poupar: parseFloat(c.saldo_poupar || 0),
+            saldo_ajudar: parseFloat(c.saldo_ajudar || 0),
+            saldoKz: parseFloat(c.saldo_gastar || 0) + parseFloat(c.saldo_poupar || 0) + parseFloat(c.saldo_ajudar || 0),
             responsavel: c.Responsavel ? {
                 id: c.Responsavel.id_responsavel,
                 nome: c.Responsavel.nome_completo,
@@ -347,6 +352,113 @@ exports.ativarResponsavel = async (req, res) => {
         });
 
         res.json({ mensagem: "Responsável ativado com sucesso" });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
+
+// ============================================
+// PUT /api/admin/utilizadores/responsaveis/:id
+// ============================================
+exports.atualizarResponsavel = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, email, telefone, provincia, municipio } = req.body;
+
+        const responsavel = await Responsavel.findByPk(id);
+        if (!responsavel) {
+            return res.status(404).json({ erro: "RESPONSAVEL_NAO_ENCONTRADO" });
+        }
+
+        await responsavel.update({
+            nome_completo: nome || responsavel.nome_completo,
+            email: email || responsavel.email,
+            telefone: telefone || responsavel.telefone,
+            provincia: provincia || responsavel.provincia,
+            municipio: municipio || responsavel.municipio
+        });
+
+        await LogAdmin.create({
+            id_admin: req.usuario.id,
+            acao: "ATUALIZAR",
+            entidade: "responsavel",
+            id_entidade: id,
+            detalhes: JSON.stringify({ nome: responsavel.nome_completo })
+        });
+
+        res.json({ mensagem: "Responsável atualizado com sucesso", responsavel });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
+
+// ============================================
+// PUT /api/admin/utilizadores/criancas/:id
+// ============================================
+exports.atualizarCrianca = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const { nome, idade, nivel, provincia, municipio, saldo_gastar, saldo_poupar, saldo_ajudar } = req.body;
+
+        const crianca = await Criancas.findByPk(id);
+        if (!crianca) {
+            return res.status(404).json({ erro: "CRIANCA_NAO_ENCONTRADA" });
+        }
+
+        await crianca.update({
+            nome_completo: nome || crianca.nome_completo,
+            idade: idade !== undefined ? idade : crianca.idade,
+            nivel: nivel || crianca.nivel,
+            provincia: provincia || crianca.provincia,
+            municipio: municipio || crianca.municipio,
+            saldo_gastar: saldo_gastar !== undefined ? saldo_gastar : crianca.saldo_gastar,
+            saldo_poupar: saldo_poupar !== undefined ? saldo_poupar : crianca.saldo_poupar,
+            saldo_ajudar: saldo_ajudar !== undefined ? saldo_ajudar : crianca.saldo_ajudar
+        });
+
+        await LogAdmin.create({
+            id_admin: req.usuario.id,
+            acao: "ATUALIZAR",
+            entidade: "crianca",
+            id_entidade: id,
+            detalhes: JSON.stringify({ nome: crianca.nome_completo })
+        });
+
+        res.json({ mensagem: "Criança atualizada com sucesso", crianca });
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
+
+// ============================================
+// DELETE /api/admin/utilizadores/criancas/:id
+// ============================================
+exports.deletarCrianca = async (req, res) => {
+    try {
+        const { id } = req.params;
+        const crianca = await Criancas.findByPk(id);
+        
+        if (!crianca) {
+            return res.status(404).json({ erro: "CRIANCA_NAO_ENCONTRADA" });
+        }
+
+        await crianca.destroy();
+
+        await LogAdmin.create({
+            id_admin: req.usuario.id,
+            acao: "DELETAR",
+            entidade: "crianca",
+            id_entidade: id,
+            detalhes: JSON.stringify({ nome: crianca.nome_completo })
+        });
+
+        res.json({ mensagem: "Criança deletada com sucesso" });
 
     } catch (error) {
         console.error(error);
