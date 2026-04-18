@@ -111,6 +111,7 @@ exports.deletarConteudo = async (req, res) => {
     }
 };
 
+// controllers/adminConteudoController.js
 exports.listarConteudosComViews = async (req, res) => {
     try {
         const { tipo, faixa_etaria } = req.query;
@@ -118,13 +119,14 @@ exports.listarConteudosComViews = async (req, res) => {
         if (tipo) where.tipo = tipo;
         if (faixa_etaria) where.faixa_etaria = faixa_etaria;
 
-        const conteudos = await ConteudoAssistido.findAll({
+        const conteudos = await Conteudo.findAll({
             where,
             include: [{
                 model: ConteudoAssistido,
                 attributes: ['id_crianca'],
                 required: false
-            }]
+            }],
+            order: [['createdAt', 'DESC']]
         });
 
         const resultado = conteudos.map(c => ({
@@ -136,12 +138,14 @@ exports.listarConteudosComViews = async (req, res) => {
             duracao: c.duracao,
             categoria: c.tipo,
             faixa_etaria: c.faixa_etaria,
-            visualizacoes: c.ConteudoAssistidos?.length || 0,
-            status: c.status !== false ? "Ativo" : "Inativo"
+            visualizacoes: c.conteudo_assistidos?.length || 0,  // ← ALIAS CORRETO
+            status: "Ativo"
         }));
 
         res.json({ total: resultado.length, videos: resultado });
+
     } catch (error) {
+        console.error("Erro listar conteudos:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

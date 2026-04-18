@@ -65,8 +65,9 @@ db.Responsavel.hasMany(db.Tarefa, { foreignKey: "id_responsavel" });
 db.Tarefa.belongsTo(db.Responsavel, { foreignKey: "id_responsavel" });
 
 // MISSÃO -> CONTEÚDO
-db.Missao.hasMany(db.Conteudo, { foreignKey: "id_missao" });
-db.Conteudo.belongsTo(db.Missao, { foreignKey: "id_missao" });
+// Missão pertence a um Conteúdo (vídeo vinculado)
+db.Missao.belongsTo(db.Conteudo, { foreignKey: "id_conteudo", as: "conteudo" });
+db.Conteudo.hasMany(db.Missao, { foreignKey: "id_conteudo", as: "missoes" });
 
 // CRIANÇA -> CONTEUDO_ASSISTIDO (através da tabela pivô)
 db.Criancas.hasMany(db.ConteudoAssistido, { foreignKey: "id_crianca" });
@@ -85,10 +86,10 @@ db.Criancas.hasMany(db.CriancaShopItem, { foreignKey: "id_crianca", as: "itens_c
 db.CriancaShopItem.belongsTo(db.Criancas, { foreignKey: "id_crianca", as: "crianca" });
 
 // Associações do Quiz
-db.Missao.hasOne(Quiz, { foreignKey: "id_missao" });
-db.Quiz.belongsTo(Missao, { foreignKey: "id_missao" });
-db.Quiz.hasMany(QuizOpcao, { foreignKey: "id_quiz" });
-db.QuizOpcao.belongsTo(Quiz, { foreignKey: "id_quiz" });
+db.Missao.hasOne(Quiz, { foreignKey: "id_missao", as: "quiz"  });
+db.Quiz.belongsTo(Missao, { foreignKey: "id_missao" , as: "missao"});
+db.Quiz.hasMany(QuizOpcao, { foreignKey: "id_quiz", as: "opcoes"});
+db.QuizOpcao.belongsTo(Quiz, { foreignKey: "id_quiz", as: "quiz"  });
 
 console.log("Todas as associations foram carregadas com sucesso!");
 

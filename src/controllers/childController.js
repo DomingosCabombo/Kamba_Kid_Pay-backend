@@ -5,8 +5,8 @@ const Missao = require("../models/Missoes");
 const Campanha = require("../models/Campanha");
 const Doacoes = require("../models/Doacoes");
 const Historico = require("../models/HistoricoTransacao");
-const {Conteudo} = require("../models/VideoAssistido");
-const {ConteudoAssistido} = require("../models/VideoAssistido");
+const { Conteudo } = require("../models/VideoAssistido");
+const { ConteudoAssistido } = require("../models/VideoAssistido");
 const ShopItem = require("../models/ShopItem");
 const CriancaShopItem = require("../models/CriancaShopItem");
 const sequelize = require("../config/database");
@@ -23,7 +23,6 @@ exports.dashboard = async (req, res) => {
                 mensagem: "Criança não encontrada."
             });
         }
-        console.log("👤 Criança encontrada:", crianca.nome_completo);
 
         // 🔥 CALCULAR XP E NÍVEL CORRETAMENTE
         const xpAtual = crianca.xp || 0;
@@ -39,8 +38,6 @@ exports.dashboard = async (req, res) => {
             limit: 5,
             order: [['createdAt', 'ASC']]
         });
-        console.log("📋 Tarefas pendentes encontradas:", tarefasDoDia.length);
-        console.log("📋 Detalhes:", tarefasDoDia.map(t => ({ id: t.id_tarefa, titulo: t.titulo })));
 
         // Missão em destaque
         const missaoDestaque = await Missao.findOne({
@@ -82,9 +79,9 @@ exports.dashboard = async (req, res) => {
                 id: crianca.id_crianca,
                 nome: crianca.nome_completo,
                 idade: crianca.idade,
-                nivel: nivelAtual,  
-                xp: xpAtual,     
-                xp_para_proximo_nivel: xpProximoNivel,  
+                nivel: nivelAtual,
+                xp: xpAtual,
+                xp_para_proximo_nivel: xpProximoNivel,
                 avatar: avatarAtual,
                 potes: {
                     saldo_gastar: parseFloat(crianca.saldo_gastar),
@@ -248,17 +245,26 @@ exports.submitTask = async (req, res) => {
     }
 };
 
+
 // GET /api/child/missions
 exports.listMissions = async (req, res) => {
     try {
         const criancaId = req.usuario.id;
         const { tipo } = req.query;
+        const crianca = await Criancas.findByPk(criancaId);
+        const idResponsavel = crianca.id_responsavel;
 
         const where = {
-            id_crianca: criancaId,
+            [Op.or]: [
+                { id_crianca: criancaId },           // Missões específicas da criança
+                { id_crianca: null },                 // Missões do sistema
+                { id_responsavel: idResponsavel }     // Missões criadas pelo responsável
+            ],
             ativa: true
         };
-        if (tipo) where.tipo = tipo;
+
+        // 🔥 CORREÇÃO: Usar 'tipo_missao' em vez de 'tipo'
+        if (tipo) where.tipo_missao = tipo;  // ← MUDAR AQUI!
 
         const missoes = await Missao.findAll({
             where,
@@ -274,8 +280,8 @@ exports.listMissions = async (req, res) => {
                 id: m.id_missao,
                 titulo: m.titulo,
                 descricao: m.descricao,
-                tipo: m.tipo,
-                tipo_label: m.tipo === 'poupanca' ? 'Poupança' : (m.tipo === 'consumo' ? 'Consumo' : 'Solidariedade'),
+                tipo: m.tipo_missao,  // ← Retornar tipo_missao para o frontend
+                tipo_label: m.tipo_missao === 'quiz' ? 'Quiz' : (m.tipo_missao === 'conteudo' ? 'Conteúdo' : (m.tipo_missao === 'tarefa_casa' ? 'Tarefa' : 'Ação Financeira')),
                 objetivo_valor: objetivo,
                 progresso_atual: progresso,
                 percentagem: Math.round(percentagem),
@@ -292,7 +298,7 @@ exports.listMissions = async (req, res) => {
         res.json({ missoes: missoesFormatadas });
 
     } catch (error) {
-        console.error(error);
+        console.error("Erro ao listar missões:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

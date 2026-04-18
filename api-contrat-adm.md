@@ -646,7 +646,12 @@ Authorization: Bearer {{token_admin}}
             "explicacao": "Poupar significa guardar dinheiro para usar no futuro",
             "pontosRecompensa": 50,
             "vezesCompletado": 450,
-            "dataCriacao": "2026-01-20T00:00:00.000Z"
+            "dataCriacao": "2026-01-20T00:00:00.000Z",
+            "videoVinculado": {
+                    "id": conteudo.id_conteudo,
+                    "titulo": conteudo.titulo,
+                    "thumbnail": conteudo.thumbnail_url
+                }
         }
     ]
 }
@@ -671,7 +676,8 @@ Content-Type: application/json
         { "texto": "Esquecer", "correta": false, "icone": "🚫" }
     ],
     "explicacao": "Sempre pense bem antes de gastar!",
-    "pontosRecompensa": 75
+    "pontosRecompensa": 75,
+    "id_conteudo": 5 
 }
 ```
 

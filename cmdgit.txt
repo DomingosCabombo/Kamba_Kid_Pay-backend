@@ -19,7 +19,7 @@ git add .
 #### 3. Faz o commit
 
 ```bash
-git commit -m "Refatoração do projeto: removidas pastas antigas e nova estrutura"
+git commit -m "implementacao do adm"
 ```
 
 #### 4. Envia para o repositório remoto

@@ -4,6 +4,7 @@ const sequelize = require("../config/database");
 const Missao = require("../models/Missoes");
 const Quiz = require("../models/Quiz");
 const QuizOpcao = require("../models/QuizOpcao");
+const {Conteudo} = require("../models/VideoAssistido")
 const RespostaUsuario = require("../models/RespostaUsuario");
 const LogAdmin = require("../models/LogAdmin");
 
@@ -14,34 +15,36 @@ exports.listarQuizzes = async (req, res) => {
     try {
         const missoesQuiz = await Missao.findAll({
             where: { tipo_missao: 'quiz' },
-            include: [{
-                model: Quiz,
-                as: 'Quiz',
-                include: [{ model: QuizOpcao, as: 'QuizOpcaos' }]
-            }],
+            include: [
+                {
+                    model: Quiz,
+                    as: 'quiz',
+                    include: [{
+                        model: QuizOpcao,
+                        as: 'opcoes'
+                    }]
+                },
+                {
+                    model: Conteudo,
+                    as: 'conteudo',  // ← ALIAS DEFINIDO
+                    attributes: ['id_conteudo', 'titulo', 'tipo', 'thumbnail_url']
+                }
+            ],
             order: [['createdAt', 'DESC']]
         });
 
-        // Calcular vezes completado
-        const respostas = await RespostaUsuario.findAll({
-            include: [{
-                model: Quiz,
-                attributes: ['id_missao']
-            }]
-        });
-
         const resultado = missoesQuiz.map(missao => {
-            const quiz = missao.Quiz;
-            const vezesCompletado = respostas.filter(r => r.Quiz?.id_missao === missao.id_missao).length;
+            const quiz = missao.quiz;
+            const conteudo = missao.conteudo;  // ← ACESSAR COM O ALIAS
             
             return {
                 id: missao.id_missao,
                 titulo: missao.titulo,
                 descricao: missao.descricao,
-                categoria: mapearCategoriaFrontend(missao.tipo),
+                categoria: missao.tipo === 'poupanca' ? 'Poupar' : (missao.tipo === 'consumo' ? 'Gastar' : 'Doar'),
                 dificuldade: missao.nivel_minimo === 1 ? 'Fácil' : (missao.nivel_minimo === 2 ? 'Média' : 'Difícil'),
                 pergunta: quiz?.pergunta || '',
-                opcoes: quiz?.QuizOpcaos?.map((op, idx) => ({
+                opcoes: quiz?.opcoes?.map((op, idx) => ({
                     id: op.id_opcao,
                     texto: op.texto,
                     correta: op.correta,
@@ -49,8 +52,13 @@ exports.listarQuizzes = async (req, res) => {
                 })) || [],
                 explicacao: missao.descricao,
                 pontosRecompensa: missao.xp_recompensa,
-                vezesCompletado: vezesCompletado,
-                dataCriacao: missao.createdAt
+                vezesCompletado: 0,
+                dataCriacao: missao.createdAt,
+                videoVinculado: conteudo ? {
+                    id: conteudo.id_conteudo,
+                    titulo: conteudo.titulo,
+                    thumbnail: conteudo.thumbnail_url
+                } : null
             };
         });
 
@@ -69,8 +77,15 @@ exports.criarQuiz = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const {
-            titulo, descricao, categoria, dificuldade,
-            pergunta, opcoes, explicacao, pontosRecompensa
+            titulo, 
+            descricao, 
+            categoria, 
+            dificuldade, 
+            pergunta, 
+            opcoes, 
+            explicacao, 
+            pontosRecompensa,
+            id_conteudo  // ← NOVO: ID do vídeo/conteúdo vinculado
         } = req.body;
 
         // Mapear categoria
@@ -92,7 +107,7 @@ exports.criarQuiz = async (req, res) => {
             default: nivelMinimo = 1;
         }
 
-        // 🔥 CORREÇÃO: id_crianca NÃO é obrigatório para missões do sistema
+        // Criar missão
         const missao = await Missao.create({
             titulo,
             descricao: explicacao || descricao,
@@ -101,7 +116,8 @@ exports.criarQuiz = async (req, res) => {
             xp_recompensa: pontosRecompensa || 50,
             nivel_minimo: nivelMinimo,
             ativa: true,
-            id_crianca: null  // ← Missão do sistema, não vinculada a uma criança específica
+            id_crianca: null,
+            id_conteudo: id_conteudo || null  // ← NOVO: vincular a vídeo (opcional)
         }, { transaction });
 
         // Criar quiz
@@ -124,14 +140,20 @@ exports.criarQuiz = async (req, res) => {
             acao: "CRIAR",
             entidade: "quiz",
             id_entidade: missao.id_missao,
-            detalhes: JSON.stringify({ titulo, categoria })
+            detalhes: JSON.stringify({ titulo, categoria, id_conteudo })
         }, { transaction });
 
         await transaction.commit();
 
         res.status(201).json({
             mensagem: "Quiz criado com sucesso!",
-            quiz: { id: missao.id_missao, titulo, categoria, pontosRecompensa }
+            quiz: { 
+                id: missao.id_missao, 
+                titulo, 
+                categoria, 
+                pontosRecompensa,
+                id_conteudo: id_conteudo || null
+            }
         });
 
     } catch (error) {
@@ -144,19 +166,35 @@ exports.criarQuiz = async (req, res) => {
 // ============================================
 // DELETE /api/admin/quizzes/:id
 // ============================================
+// controllers/adminQuizController.js - deletarQuiz
+
 exports.deletarQuiz = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const { id } = req.params;
 
         const missao = await Missao.findByPk(id, { transaction });
+        
         if (!missao) {
             await transaction.rollback();
-            return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
+            return res.status(404).json({ 
+                erro: "QUIZ_NAO_ENCONTRADO", 
+                mensagem: `Quiz com ID ${id} não encontrado.` 
+            });
         }
+
+        if (missao.tipo_missao !== 'quiz') {
+            await transaction.rollback();
+            return res.status(400).json({ 
+                erro: "NAO_E_QUIZ", 
+                mensagem: `Este registro é do tipo ${missao.tipo_missao}, não é um quiz.` 
+            });
+        }
+
 
         // Buscar quiz associado
         const quiz = await Quiz.findOne({ where: { id_missao: id }, transaction });
+        
         if (quiz) {
             await QuizOpcao.destroy({ where: { id_quiz: quiz.id_quiz }, transaction });
             await quiz.destroy({ transaction });
@@ -168,7 +206,8 @@ exports.deletarQuiz = async (req, res) => {
             id_admin: req.usuario.id,
             acao: "DELETAR",
             entidade: "quiz",
-            id_entidade: id
+            id_entidade: id,
+            detalhes: JSON.stringify({ titulo: missao.titulo })
         }, { transaction });
 
         await transaction.commit();
@@ -181,47 +220,75 @@ exports.deletarQuiz = async (req, res) => {
     }
 };
 
-// Função auxiliar
-function mapearCategoriaFrontend(tipo) {
-    const mapa = {
-        'poupanca': 'Poupar',
-        'consumo': 'Gastar',
-        'solidariedade': 'Doar'
-    };
-    return mapa[tipo] || 'Poupar';
-}
-
 // ============================================
-// PUT /api/admin/quizzes/:id
-// Atualiza um quiz existente
-// ============================================
+// PUT /api/admin/quizzes/:id (atualizar)
+// ===========================================
 exports.atualizarQuiz = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
         const { id } = req.params;
-        const {
-            titulo, descricao, categoria, dificuldade,
-            pergunta, opcoes, explicacao, pontosRecompensa
+        const { 
+            titulo, 
+            descricao, 
+            categoria, 
+            dificuldade, 
+            pergunta, 
+            opcoes, 
+            explicacao, 
+            pontosRecompensa 
         } = req.body;
 
         const missao = await Missao.findByPk(id, { transaction });
-        if (!missao || missao.tipo_missao !== 'quiz') {
+        
+        if (!missao) {
             await transaction.rollback();
-            return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
+            return res.status(404).json({ 
+                erro: "QUIZ_NAO_ENCONTRADO", 
+                mensagem: `Quiz com ID ${id} não encontrado.` 
+            });
         }
 
-        // Atualizar missão
+        if (missao.tipo_missao !== 'quiz') {
+            await transaction.rollback();
+            return res.status(400).json({ 
+                erro: "NAO_E_QUIZ", 
+                mensagem: "Este registro não é um quiz." 
+            });
+        }
+
+        // Mapear categoria
+        let tipo;
+        switch (categoria) {
+            case 'Poupar': tipo = 'poupanca'; break;
+            case 'Gastar': tipo = 'consumo'; break;
+            default: tipo = 'poupanca';
+        }
+
+        let nivelMinimo;
+        switch (dificuldade) {
+            case 'Fácil': nivelMinimo = 1; break;
+            case 'Média': nivelMinimo = 2; break;
+            case 'Difícil': nivelMinimo = 3; break;
+            default: nivelMinimo = 1;
+        }
+
         await missao.update({
-            titulo,
-            descricao: explicacao || descricao,
-            xp_recompensa: pontosRecompensa || 50
+            titulo: titulo || missao.titulo,
+            descricao: explicacao || descricao || missao.descricao,
+            tipo: tipo,
+            xp_recompensa: pontosRecompensa || missao.xp_recompensa,
+            nivel_minimo: nivelMinimo
         }, { transaction });
 
-        // Buscar e atualizar quiz
+        // Atualizar quiz
         const quiz = await Quiz.findOne({ where: { id_missao: id }, transaction });
-        if (quiz) {
+        
+        if (quiz && pergunta) {
             await quiz.update({ pergunta }, { transaction });
+        }
 
+        // 🔥 CORREÇÃO: Verificar se opcoes existe e é um array
+        if (quiz && opcoes && Array.isArray(opcoes) && opcoes.length > 0) {
             // Remover opções antigas
             await QuizOpcao.destroy({ where: { id_quiz: quiz.id_quiz }, transaction });
 
@@ -229,7 +296,7 @@ exports.atualizarQuiz = async (req, res) => {
             for (const opcao of opcoes) {
                 await QuizOpcao.create({
                     texto: opcao.texto,
-                    correta: opcao.correta,
+                    correta: opcao.correta || false,
                     id_quiz: quiz.id_quiz
                 }, { transaction });
             }
@@ -239,18 +306,15 @@ exports.atualizarQuiz = async (req, res) => {
             id_admin: req.usuario.id,
             acao: "ATUALIZAR",
             entidade: "quiz",
-            id_entidade: id,
-            detalhes: JSON.stringify({ titulo, categoria })
+            id_entidade: id
         }, { transaction });
 
         await transaction.commit();
-
         res.json({ mensagem: "Quiz atualizado com sucesso!" });
 
     } catch (error) {
         await transaction.rollback();
-        console.error(error);
+        console.error("Erro atualizar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
-

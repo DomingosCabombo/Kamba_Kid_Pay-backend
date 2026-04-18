@@ -87,5 +87,5 @@ const Crianca = sequelize.define("crianca", {
     tableName: "crianca",
     timestamps: true
 });
-
+ 
 module.exports = Crianca;
