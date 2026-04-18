@@ -19,14 +19,23 @@ exports.createMission = async (req, res) => {
             crianca_id 
         } = req.body;
 
-        console.log("📝 Criando missão:", { titulo, tipo, objetivo_valor, crianca_id });
+        console.log("📝 Criando missão:", {   
+            titulo, 
+            descricao, 
+            tipo,           // ← O frontend envia como "tipo"
+            objetivo_valor, 
+            recompensa, 
+            icone, 
+            crianca_id  });
 
-        if (!titulo || !descricao || !tipo || !objetivo_valor || !crianca_id) {
+        if (!titulo || !tipo || !objetivo_valor || !crianca_id) {
             return res.status(400).json({ 
                 erro: "CAMPOS_OBRIGATORIOS", 
                 mensagem: "Preencha todos os campos obrigatórios." 
             });
         }
+        
+        const descFinal = descricao || `Missão: ${titulo}`;
 
         const crianca = await Crianca.findByPk(crianca_id);
         if (!crianca || crianca.id_responsavel !== req.usuario.id) {
@@ -40,12 +49,12 @@ exports.createMission = async (req, res) => {
         let tipo_missao;
         switch (tipo) {
             case 'poupanca':
-                tipo_missao = 'acao_financeira';
-                break;
             case 'consumo':
-                tipo_missao = 'acao_financeira';
-                break;
             case 'solidariedade':
+            case 'estudo':
+            case 'saude':
+            case 'comportamento':
+            case 'autonomia':
                 tipo_missao = 'acao_financeira';
                 break;
             default:
@@ -54,8 +63,9 @@ exports.createMission = async (req, res) => {
 
         const missao = await Missao.create({
             titulo,
-            descricao,
+            descricao: descFinal,
             tipo_missao,                    // ← Usar tipo_missao, não tipo
+            tipo,                           // ← Add tipo
             xp_recompensa: recompensa || 0,
             recompensa_financeira: 0,
             objetivo_valor: parseFloat(objetivo_valor),
@@ -119,9 +129,24 @@ exports.listMissions = async (req, res) => {
                 progresso_atual: parseFloat(m.progresso_atual),
                 recompensa: parseFloat(m.xp_recompensa),
                 icone: m.icone,
-                cor: m.tipo === 'poupanca' ? ["#BF5AF2", "#A335EE"] : (m.tipo === 'consumo' ? ["#0984E3", "#0652DD"] : ["#FFD130", "#FBC02D"]),
-                tipo_label: m.tipo === 'poupanca' ? "Poupança" : (m.tipo === 'consumo' ? "Consumo" : "Solidariedade"),
-                icone_nome: m.tipo === 'poupanca' ? "trending-up" : (m.tipo === 'consumo' ? "cart" : "heart"),
+                cor: m.tipo === 'poupanca' ? ["#3b82f6", "#22c55e"] : 
+                     (m.tipo === 'estudo' ? ["#7c3aed", "#3b82f6"] : 
+                     (m.tipo === 'comportamento' ? ["#f59e0b", "#ef4444"] : 
+                     (m.tipo === 'autonomia' ? ["#10b981", "#3b82f6"] : 
+                     (m.tipo === 'saude' ? ["#ef4444", "#f43f5e"] : 
+                     (m.tipo === 'solidariedade' ? ["#ec4899", "#f43f5e"] : ["#0984E3", "#0652DD"]))))),
+                tipo_label: m.tipo === 'poupanca' ? "Poupança" : 
+                            (m.tipo === 'estudo' ? "Estudo" : 
+                            (m.tipo === 'comportamento' ? "Comp." : 
+                            (m.tipo === 'autonomia' ? "Autonomia" : 
+                            (m.tipo === 'saude' ? "Saúde" : 
+                            (m.tipo === 'solidariedade' ? "Social" : "Consumo"))))),
+                icone_nome: m.tipo === 'poupanca' ? "trending-up" : 
+                            (m.tipo === 'estudo' ? "book" : 
+                            (m.tipo === 'comportamento' ? "star" : 
+                            (m.tipo === 'autonomia' ? "flash" : 
+                            (m.tipo === 'saude' ? "heart" : 
+                            (m.tipo === 'solidariedade' ? "hand-heart" : "cart"))))),
                 ativa: m.ativa,
                 crianca_id: m.id_crianca
             }))

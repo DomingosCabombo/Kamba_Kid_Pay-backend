@@ -33,8 +33,11 @@ router.get("/utilizadores/criancas", adminAuthMiddleware, adminUtilizadoresContr
 router.get("/utilizadores/criancas/:id/responsavel", adminAuthMiddleware, adminUtilizadoresController.buscarResponsavel);
 router.patch("/utilizadores/criancas/:id/status", adminAuthMiddleware, adminUtilizadoresController.alterarStatusCrianca);
 router.delete("/utilizadores/responsaveis/:id", adminAuthMiddleware, adminUtilizadoresController.deletarResponsavel);
+router.put("/utilizadores/responsaveis/:id", adminAuthMiddleware, adminUtilizadoresController.atualizarResponsavel);
 router.patch("/utilizadores/responsaveis/:id/desativar", adminAuthMiddleware, adminUtilizadoresController.desativarResponsavel);
 router.patch("/utilizadores/responsaveis/:id/ativar", adminAuthMiddleware, adminUtilizadoresController.ativarResponsavel);
+router.delete("/utilizadores/criancas/:id", adminAuthMiddleware, adminUtilizadoresController.deletarCrianca);
+router.put("/utilizadores/criancas/:id", adminAuthMiddleware, adminUtilizadoresController.atualizarCrianca);
 
 // Tarefas
 const adminTarefasController = require("../controllers/adminTarefasController");

@@ -45,7 +45,7 @@ const Missao = sequelize.define("missao", {
         defaultValue: true
     },
     tipo: {
-        type: DataTypes.ENUM('poupanca', 'consumo', 'solidariedade'),
+        type: DataTypes.ENUM('poupanca', 'consumo', 'solidariedade', 'estudo', 'saude', 'comportamento', 'autonomia'),
         defaultValue: 'poupanca'
     },
     objetivo_valor: {

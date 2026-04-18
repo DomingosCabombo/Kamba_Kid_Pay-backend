@@ -265,11 +265,11 @@ exports.addChild = async (req, res) => {
             });
         }
 
-        if (pin.length < 4) {
+        if (pin.length !== 4 || !/^\d+$/.test(pin)) {
             await transaction.rollback();
             return res.status(400).json({ 
                 erro: "PIN_INVALIDO", 
-                mensagem: "O PIN deve ter pelo menos 4 caracteres." 
+                mensagem: "O PIN deve ter exatamente 4 dígitos numéricos." 
             });
         }
 

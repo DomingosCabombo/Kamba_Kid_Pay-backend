@@ -2,6 +2,7 @@
 const express = require("express");
 const app = express();
 const path = require("path");
+const cors = require("cors")
 
 // Importar rotas
 const authRoutes = require("./routes/authRoutes");
@@ -18,7 +19,7 @@ const adminRoutes = require("./routes/adminRoutes");
 
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
-
+app.use(cors())
 // Rota de health check
 app.get("/api/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date() });
