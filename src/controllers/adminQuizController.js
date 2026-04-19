@@ -33,6 +33,15 @@ exports.listarQuizzes = async (req, res) => {
             order: [['createdAt', 'DESC']]
         });
 
+        // Calcular vezes completado
+        const respostas = await RespostaUsuario.findAll({
+            include: [{
+                model: Quiz,
+                as: 'Quiz',
+                attributes: ['id_missao']
+            }]
+        });
+
         const resultado = missoesQuiz.map(missao => {
             const quiz = missao.quiz;
             const conteudo = missao.conteudo;  // ← ACESSAR COM O ALIAS
@@ -157,7 +166,7 @@ exports.criarQuiz = async (req, res) => {
         });
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) await transaction.rollback();
         console.error("Erro criar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
@@ -176,19 +185,8 @@ exports.deletarQuiz = async (req, res) => {
         const missao = await Missao.findByPk(id, { transaction });
         
         if (!missao) {
-            await transaction.rollback();
-            return res.status(404).json({ 
-                erro: "QUIZ_NAO_ENCONTRADO", 
-                mensagem: `Quiz com ID ${id} não encontrado.` 
-            });
-        }
-
-        if (missao.tipo_missao !== 'quiz') {
-            await transaction.rollback();
-            return res.status(400).json({ 
-                erro: "NAO_E_QUIZ", 
-                mensagem: `Este registro é do tipo ${missao.tipo_missao}, não é um quiz.` 
-            });
+            if (transaction) await transaction.rollback();
+            return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
         }
 
 
@@ -214,12 +212,15 @@ exports.deletarQuiz = async (req, res) => {
         res.json({ mensagem: "Quiz deletado com sucesso!" });
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) await transaction.rollback();
         console.error("Erro deletar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
+// ============================================
+// PUT /api/admin/quizzes/:id
+// Atualiza um quiz existente
 // ============================================
 // PUT /api/admin/quizzes/:id (atualizar)
 // ===========================================
@@ -239,37 +240,9 @@ exports.atualizarQuiz = async (req, res) => {
         } = req.body;
 
         const missao = await Missao.findByPk(id, { transaction });
-        
-        if (!missao) {
-            await transaction.rollback();
-            return res.status(404).json({ 
-                erro: "QUIZ_NAO_ENCONTRADO", 
-                mensagem: `Quiz com ID ${id} não encontrado.` 
-            });
-        }
-
-        if (missao.tipo_missao !== 'quiz') {
-            await transaction.rollback();
-            return res.status(400).json({ 
-                erro: "NAO_E_QUIZ", 
-                mensagem: "Este registro não é um quiz." 
-            });
-        }
-
-        // Mapear categoria
-        let tipo;
-        switch (categoria) {
-            case 'Poupar': tipo = 'poupanca'; break;
-            case 'Gastar': tipo = 'consumo'; break;
-            default: tipo = 'poupanca';
-        }
-
-        let nivelMinimo;
-        switch (dificuldade) {
-            case 'Fácil': nivelMinimo = 1; break;
-            case 'Média': nivelMinimo = 2; break;
-            case 'Difícil': nivelMinimo = 3; break;
-            default: nivelMinimo = 1;
+        if (!missao || missao.tipo_missao !== 'quiz') {
+            if (transaction) await transaction.rollback();
+            return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
         }
 
         await missao.update({
@@ -313,8 +286,19 @@ exports.atualizarQuiz = async (req, res) => {
         res.json({ mensagem: "Quiz atualizado com sucesso!" });
 
     } catch (error) {
-        await transaction.rollback();
+        if (transaction) await transaction.rollback();
         console.error("Erro atualizar quiz:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
+
+function mapearCategoriaFrontend(tipo) {
+    const mapa = {
+        'poupanca': 'Poupar',
+        'consumo': 'Gastar',
+        'solidariedade': 'Ajudar',
+        'investimento': 'Investir',
+        'planejamento': 'Planejamento'
+    };
+    return mapa[tipo] || 'Poupar';
+}

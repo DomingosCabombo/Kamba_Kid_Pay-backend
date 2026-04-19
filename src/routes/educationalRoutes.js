@@ -6,7 +6,11 @@ const { authMiddleware, requireChild } = require("../middlewares/auth");
 
 router.use(authMiddleware, requireChild);
 
-router.get("/content", educationalController.listContent);
-router.patch("/content/:contentId/complete", educationalController.completeContent);
+router.get("/", educationalController.listContent);
+router.patch("/:contentId/complete", educationalController.completeContent);
+
+// Rotas de Quiz para Crianças
+router.get("/quiz/:missaoId", educationalController.getQuizDetails);
+router.post("/quiz/:quizId/submit", educationalController.submitQuiz);
 
 module.exports = router;

@@ -1,8 +1,9 @@
-// controllers/educationalController.js
-const { Op } = require("sequelize");
-const {Conteudo} = require("../models/VideoAssistido");
-const {ConteudoAssistido} = require("../models/VideoAssistido");
+const { Conteudo, ConteudoAssistido } = require("../models/VideoAssistido");
 const Criancas = require("../models/Criancas");
+const Missao = require("../models/Missoes");
+const Quiz = require("../models/Quiz");
+const QuizOpcao = require("../models/QuizOpcao");
+const RespostaUsuario = require("../models/RespostaUsuario");
 const sequelize = require("../config/database");
 
 // GET /api/educational-content
@@ -29,9 +30,7 @@ exports.listContent = async (req, res) => {
         }
 
         const conteudos = await Conteudo.findAll({
-            where: {
-                faixa_etaria: faixaRecomendada
-            }
+            where: { faixa_etaria: faixaRecomendada }
         });
 
         const conteudosAssistidos = await ConteudoAssistido.findAll({
@@ -48,13 +47,108 @@ exports.listContent = async (req, res) => {
                 tipo: c.tipo,
                 faixa_etaria: c.faixa_etaria,
                 thumbnail_url: c.thumbnail_url,
+                url: c.url,
                 duracao: c.duracao,
                 topico: c.topico,
+                id_missao: c.id_missao, 
                 completo: idsAssistidos.includes(c.id_conteudo)
             }))
         });
 
     } catch (error) {
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
+
+// GET /api/educational-content/quiz/:missaoId
+exports.getQuizDetails = async (req, res) => {
+    try {
+        const { missaoId } = req.params;
+        
+        const quiz = await Quiz.findOne({
+            where: { id_missao: missaoId },
+            include: [{
+                model: QuizOpcao,
+                as: 'QuizOpcaos',
+                attributes: ['id_opcao', 'texto', 'id_quiz']
+            }]
+        });
+
+        if (!quiz) {
+            return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
+        }
+
+        res.json({
+            id: quiz.id_quiz,
+            id_missao: quiz.id_missao,
+            pergunta: quiz.pergunta,
+            opcoes: quiz.QuizOpcaos
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
+
+// POST /api/educational-content/quiz/:quizId/submit
+exports.submitQuiz = async (req, res) => {
+    const transaction = await sequelize.transaction();
+    try {
+        const { quizId } = req.params;
+        const { id_opcao } = req.body;
+        const criancaId = req.usuario.id;
+
+        const quiz = await Quiz.findByPk(quizId, {
+            include: [{ model: Missao, as: 'Missao' }]
+        });
+        const opcao = await QuizOpcao.findByPk(id_opcao);
+
+        if (!quiz || !opcao || opcao.id_quiz !== parseInt(quizId)) {
+            await transaction.rollback();
+            return res.status(404).json({ erro: "DADOS_INVALIDOS" });
+        }
+
+        const jaRespondeu = await RespostaUsuario.findOne({
+            where: { id_crianca: criancaId, id_quiz: quizId, correta: true }
+        });
+
+        const correta = opcao.correta;
+
+        // Registrar resposta
+        await RespostaUsuario.create({
+            id_crianca: criancaId,
+            id_quiz: quizId,
+            id_opcao: id_opcao,
+            correta: correta
+        }, { transaction });
+
+        let recompensa = { xp: 0, pontos: 0 };
+
+        if (correta && !jaRespondeu) {
+            const crianca = await Criancas.findByPk(criancaId, { transaction });
+            const xpGanho = quiz.Missao?.xp_recompensa || 20;
+            
+            recompensa.xp = xpGanho;
+            
+            const novoXP = crianca.xp + xpGanho;
+            const novoNivel = Math.floor(novoXP / 100) + 1;
+            
+            await crianca.update({
+                xp: novoXP,
+                nivel: novoNivel
+            }, { transaction });
+        }
+
+        await transaction.commit();
+        res.json({
+            correta,
+            mensagem: correta ? "Parabéns! Acertaste!" : "Não foi desta vez. Tenta novamente!",
+            recompensa: correta && !jaRespondeu ? recompensa : null
+        });
+
+    } catch (error) {
+        await transaction.rollback();
         console.error(error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
@@ -70,71 +164,34 @@ exports.completeContent = async (req, res) => {
         const conteudo = await Conteudo.findByPk(contentId, { transaction });
         if (!conteudo) {
             await transaction.rollback();
-            return res.status(404).json({ 
-                erro: "CONTEUDO_NAO_ENCONTRADO", 
-                mensagem: "Conteúdo não encontrado." 
-            });
+            return res.status(404).json({ erro: "CONTEUDO_NAO_ENCONTRADO" });
         }
 
-        // 🔥 VERIFICAR SE O CONTEÚDO É DA FAIXA ETÁRIA DA CRIANÇA
         const crianca = await Criancas.findByPk(criancaId, { transaction });
-        let faixaCrianca;
-        if (crianca.idade <= 8) faixaCrianca = '6-8';
-        else if (crianca.idade <= 10) faixaCrianca = '9-10';
-        else faixaCrianca = '11-12';
-
-        if (conteudo.faixa_etaria !== faixaCrianca) {
-            await transaction.rollback();
-            return res.status(400).json({ 
-                erro: "FAIXA_ETARIA_INVALIDA", 
-                mensagem: `Este conteúdo é para a faixa etária ${conteudo.faixa_etaria}. A sua faixa é ${faixaCrianca}.`,
-                sua_idade: crianca.idade,
-                faixa_do_conteudo: conteudo.faixa_etaria
-            });
-        }
-
-        // Verificar se já foi assistido
-        const jaAssistiu = await ConteudoAssistido.findOne({
+        
+        // Registrar visualização
+        const [registro, created] = await ConteudoAssistido.findOrCreate({
             where: { id_crianca: criancaId, id_conteudo: contentId },
             transaction
         });
 
-        if (jaAssistiu) {
+        if (!created) {
             await transaction.rollback();
-            return res.status(400).json({ 
-                erro: "CONTEUDO_JA_ASSISTIDO", 
-                mensagem: "Você já completou este conteúdo." 
-            });
+            return res.status(400).json({ erro: "JA_COMPLETO", mensagem: "Já completaste este conteúdo." });
         }
 
-        // Registrar visualização
-        await ConteudoAssistido.create({
-            id_crianca: criancaId,
-            id_conteudo: contentId
-        }, { transaction });
-
-        // 🔥 DAR XP
-        const novoXP = crianca.xp + (conteudo.xp_recompensa || 10);
+        // Dar XP por assistir
+        const xpGanho = conteudo.xp_recompensa || 10;
+        const novoXP = crianca.xp + xpGanho;
         const novoNivel = Math.floor(novoXP / 100) + 1;
         
-        await crianca.update({
-            xp: novoXP,
-            nivel: novoNivel
-        }, { transaction });
+        await crianca.update({ xp: novoXP, nivel: novoNivel }, { transaction });
 
         await transaction.commit();
-
-        res.json({
-            mensagem: "Conteúdo marcado como concluído!",
-            conteudo_id: contentId,
-            xp_ganho: conteudo.xp_recompensa || 10,
-            xp_total: novoXP,
-            novo_nivel: novoNivel
-        });
+        res.json({ mensagem: "Conteúdo concluído!", xp_ganho: xpGanho });
 
     } catch (error) {
         await transaction.rollback();
-        console.error(error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

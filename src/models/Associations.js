@@ -12,6 +12,7 @@ const ShopItem = require("./ShopItem");
 const CriancaShopItem = require("./CriancaShopItem");
 const Quiz = require("./Quiz")
 const QuizOpcao = require("./QuizOpcao")
+const RespostaUsuario = require("./RespostaUsuario");
 
 
 const db = {
@@ -29,6 +30,7 @@ const db = {
     CriancaShopItem,
     Quiz,
     QuizOpcao,
+    RespostaUsuario,
     sequelize
 };
 
@@ -86,10 +88,16 @@ db.Criancas.hasMany(db.CriancaShopItem, { foreignKey: "id_crianca", as: "itens_c
 db.CriancaShopItem.belongsTo(db.Criancas, { foreignKey: "id_crianca", as: "crianca" });
 
 // Associações do Quiz
-db.Missao.hasOne(Quiz, { foreignKey: "id_missao", as: "quiz"  });
-db.Quiz.belongsTo(Missao, { foreignKey: "id_missao" , as: "missao"});
-db.Quiz.hasMany(QuizOpcao, { foreignKey: "id_quiz", as: "opcoes"});
-db.QuizOpcao.belongsTo(Quiz, { foreignKey: "id_quiz", as: "quiz"  });
+db.Missao.hasOne(db.Quiz, { foreignKey: "id_missao", as: "Quiz" });
+db.Quiz.belongsTo(db.Missao, { foreignKey: "id_missao", as: "Missao" });
+db.Quiz.hasMany(db.QuizOpcao, { foreignKey: "id_quiz", as: "QuizOpcaos" });
+db.QuizOpcao.belongsTo(db.Quiz, { foreignKey: "id_quiz", as: "Quiz" });
+
+// Associações da Resposta do Usuário
+db.Criancas.hasMany(db.RespostaUsuario, { foreignKey: "id_crianca" });
+db.RespostaUsuario.belongsTo(db.Criancas, { foreignKey: "id_crianca" });
+db.Quiz.hasMany(db.RespostaUsuario, { foreignKey: "id_quiz", as: "Respostas" });
+db.RespostaUsuario.belongsTo(db.Quiz, { foreignKey: "id_quiz", as: "Quiz" });
 
 console.log("Todas as associations foram carregadas com sucesso!");
 
