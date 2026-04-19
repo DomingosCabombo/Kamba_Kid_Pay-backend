@@ -67,8 +67,9 @@ db.Responsavel.hasMany(db.Tarefa, { foreignKey: "id_responsavel" });
 db.Tarefa.belongsTo(db.Responsavel, { foreignKey: "id_responsavel" });
 
 // MISSÃO -> CONTEÚDO
-db.Missao.hasMany(db.Conteudo, { foreignKey: "id_missao" });
-db.Conteudo.belongsTo(db.Missao, { foreignKey: "id_missao" });
+// Missão pertence a um Conteúdo (vídeo vinculado)
+db.Missao.belongsTo(db.Conteudo, { foreignKey: "id_conteudo", as: "conteudo" });
+db.Conteudo.hasMany(db.Missao, { foreignKey: "id_conteudo", as: "missoes" });
 
 // CRIANÇA -> CONTEUDO_ASSISTIDO (através da tabela pivô)
 db.Criancas.hasMany(db.ConteudoAssistido, { foreignKey: "id_crianca" });

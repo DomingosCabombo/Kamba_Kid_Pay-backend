@@ -111,6 +111,7 @@ exports.deletarConteudo = async (req, res) => {
     }
 };
 
+// controllers/adminConteudoController.js
 exports.listarConteudosComViews = async (req, res) => {
     try {
         const { tipo, faixa_etaria } = req.query;
@@ -124,7 +125,8 @@ exports.listarConteudosComViews = async (req, res) => {
                 model: ConteudoAssistido,
                 attributes: ['id_crianca'],
                 required: false
-            }]
+            }],
+            order: [['createdAt', 'DESC']]
         });
 
         const resultado = conteudos.map(c => ({
@@ -142,7 +144,9 @@ exports.listarConteudosComViews = async (req, res) => {
         }));
 
         res.json({ total: resultado.length, videos: resultado });
+
     } catch (error) {
+        console.error("Erro listar conteudos:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

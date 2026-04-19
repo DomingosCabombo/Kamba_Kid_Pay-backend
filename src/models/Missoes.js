@@ -68,6 +68,14 @@ const Missao = sequelize.define("missao", {
             key: 'id_crianca'
         }
     },
+    id_conteudo: {
+        type: DataTypes.INTEGER,
+        allowNull: true,
+        references: {
+            model: 'conteudo',
+            key: 'id_conteudo'
+        }
+    },
     concluida: {
         type: DataTypes.BOOLEAN,
         defaultValue: false

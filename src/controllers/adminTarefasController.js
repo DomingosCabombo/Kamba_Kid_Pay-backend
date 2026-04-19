@@ -1,5 +1,6 @@
 // controllers/adminTarefasController.js
 const { Op } = require("sequelize");
+const sequelize = require("../config/database");
 const Tarefa = require("../models/Tarefa");
 const Criancas = require("../models/Criancas");
 const Responsavel = require("../models/Responsavel");
@@ -7,7 +8,6 @@ const LogAdmin = require("../models/LogAdmin");
 
 // ============================================
 // GET /api/admin/tarefas
-// Lista todas as tarefas com filtros
 // ============================================
 exports.listarTarefas = async (req, res) => {
     try {
@@ -23,8 +23,14 @@ exports.listarTarefas = async (req, res) => {
         const { count, rows: tarefas } = await Tarefa.findAndCountAll({
             where,
             include: [
-                { model: Criancas, attributes: ['id_crianca', 'nome_completo', 'idade'] },
-                { model: Responsavel, attributes: ['id_responsavel', 'nome_completo'] }
+                { 
+                    model: Criancas,
+                    attributes: ['id_crianca', 'nome_completo', 'idade']
+                },
+                { 
+                    model: Responsavel,
+                    attributes: ['id_responsavel', 'nome_completo']
+                }
             ],
             order: [['createdAt', 'DESC']],
             limit: parseInt(limite),
@@ -35,33 +41,38 @@ exports.listarTarefas = async (req, res) => {
             total: count,
             pagina: parseInt(pagina),
             totalPaginas: Math.ceil(count / limite),
-            tarefas: tarefas.map(t => ({
-                id: t.id_tarefa,
-                titulo: t.titulo,
-                descricao: t.descricao,
-                recompensaKz: parseFloat(t.recompensa),
-                categoria: t.categoria === 'save' ? 'Casa' : (t.categoria === 'spend' ? 'Pessoal' : 'Escola'),
-                dificuldade: mapearDificuldade(t.recompensa),
-                icone: t.icone || '📋',
-                tempoEstimado: '15 min',
-                status: t.status === 'aprovada' ? 'Ativa' : (t.status === 'pendente' ? 'Ativa' : 'Inativa'),
-                vezesCompletada: 0,
-                crianca: t.Criancum ? {
-                    id: t.Criancum.id_crianca,
-                    nome: t.Criancum.nome_completo
-                } : null,
-                responsavel: t.Responsavel ? {
-                    id: t.Responsavel.id_responsavel,
-                    nome: t.Responsavel.nome_completo
-                } : null,
-                criado_em: t.createdAt,
-                concluido_em: t.concluido_em,
-                foto_url: t.foto_comprovacao
-            }))
+            tarefas: tarefas.map(t => {
+                // 🔥 Tentar todos os possíveis nomes
+                const crianca = t.Criancum || t.Crianca || t.criancum || t.crianca || t.Criancu;
+                
+                return {
+                    id: t.id_tarefa,
+                    titulo: t.titulo,
+                    descricao: t.descricao,
+                    recompensaKz: parseFloat(t.recompensa),
+                    categoria: t.categoria === 'save' ? 'Casa' : (t.categoria === 'spend' ? 'Pessoal' : 'Escola'),
+                    dificuldade: t.recompensa < 200 ? 'Fácil' : (t.recompensa < 400 ? 'Média' : 'Difícil'),
+                    icone: t.icone || '📋',
+                    tempoEstimado: '15 min',
+                    status: t.status === 'aprovada' ? 'Concluída' : (t.status === 'pendente' ? 'Pendente' : 'Rejeitada'),
+                    vezesCompletada: t.status === 'aprovada' ? 1 : 0,
+                    crianca: crianca ? {
+                        id: crianca.id_crianca,
+                        nome: crianca.nome_completo
+                    } : null,
+                    responsavel: t.Responsavel ? {
+                        id: t.Responsavel.id_responsavel,
+                        nome: t.Responsavel.nome_completo
+                    } : null,
+                    criado_em: t.createdAt,
+                    concluido_em: t.concluido_em,
+                    foto_url: t.foto_comprovacao
+                };
+            })
         });
 
     } catch (error) {
-        console.error(error);
+        console.error("Erro listar tarefas:", error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
