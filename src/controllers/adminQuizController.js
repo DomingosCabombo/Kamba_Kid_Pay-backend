@@ -18,15 +18,15 @@ exports.listarQuizzes = async (req, res) => {
             include: [
                 {
                     model: Quiz,
-                    as: 'quiz',
+                    as: 'Quiz', // Corrigido p/ bater com Associations.js
                     include: [{
                         model: QuizOpcao,
-                        as: 'opcoes'
+                        as: 'QuizOpcaos' // Corrigido p/ bater com Associations.js
                     }]
                 },
                 {
                     model: Conteudo,
-                    as: 'conteudo',  // ← ALIAS DEFINIDO
+                    as: 'conteudo',
                     attributes: ['id_conteudo', 'titulo', 'tipo', 'thumbnail_url']
                 }
             ],
@@ -43,17 +43,20 @@ exports.listarQuizzes = async (req, res) => {
         });
 
         const resultado = missoesQuiz.map(missao => {
-            const quiz = missao.quiz;
-            const conteudo = missao.conteudo;  // ← ACESSAR COM O ALIAS
+            const quiz = missao.Quiz; // Usando o alias correto (Maiúsculo)
+            const conteudo = missao.conteudo;
+            
+            // Filtrar as respostas deste quiz específico
+            const vezesCompletado = respostas.filter(r => r.id_quiz === quiz?.id_quiz).length;
             
             return {
                 id: missao.id_missao,
                 titulo: missao.titulo,
                 descricao: missao.descricao,
-                categoria: missao.tipo === 'poupanca' ? 'Poupar' : (missao.tipo === 'consumo' ? 'Gastar' : 'Doar'),
+                categoria: mapearCategoriaFrontend(missao.tipo),
                 dificuldade: missao.nivel_minimo === 1 ? 'Fácil' : (missao.nivel_minimo === 2 ? 'Média' : 'Difícil'),
                 pergunta: quiz?.pergunta || '',
-                opcoes: quiz?.opcoes?.map((op, idx) => ({
+                opcoes: quiz?.QuizOpcaos?.map((op, idx) => ({
                     id: op.id_opcao,
                     texto: op.texto,
                     correta: op.correta,
@@ -61,7 +64,7 @@ exports.listarQuizzes = async (req, res) => {
                 })) || [],
                 explicacao: missao.descricao,
                 pontosRecompensa: missao.xp_recompensa,
-                vezesCompletado: 0,
+                vezesCompletado: vezesCompletado,
                 dataCriacao: missao.createdAt,
                 videoVinculado: conteudo ? {
                     id: conteudo.id_conteudo,
@@ -74,8 +77,9 @@ exports.listarQuizzes = async (req, res) => {
         res.json({ total: resultado.length, quizzes: resultado });
 
     } catch (error) {
-        console.error("Erro listar quizzes:", error);
-        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+        console.error("ERRO CRÍTICO LISTAR QUIZZES:", error);
+        console.error(error.stack);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message, stack: error.stack });
     }
 };
 
@@ -243,6 +247,25 @@ exports.atualizarQuiz = async (req, res) => {
         if (!missao || missao.tipo_missao !== 'quiz') {
             if (transaction) await transaction.rollback();
             return res.status(404).json({ erro: "QUIZ_NAO_ENCONTRADO" });
+        }
+
+        // Mapear categoria
+        let tipo;
+        switch (categoria) {
+            case 'Poupar': tipo = 'poupanca'; break;
+            case 'Gastar': tipo = 'consumo'; break;
+            case 'Investir': tipo = 'poupanca'; break;
+            case 'Doar': tipo = 'solidariedade'; break;
+            default: tipo = missao.tipo;
+        }
+
+        // Mapear dificuldade
+        let nivelMinimo;
+        switch (dificuldade) {
+            case 'Fácil': nivelMinimo = 1; break;
+            case 'Média': nivelMinimo = 2; break;
+            case 'Difícil': nivelMinimo = 3; break;
+            default: nivelMinimo = missao.nivel_minimo;
         }
 
         await missao.update({
