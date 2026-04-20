@@ -88,16 +88,16 @@ db.Criancas.hasMany(db.CriancaShopItem, { foreignKey: "id_crianca", as: "itens_c
 db.CriancaShopItem.belongsTo(db.Criancas, { foreignKey: "id_crianca", as: "crianca" });
 
 // Associações do Quiz
-db.Missao.hasOne(db.Quiz, { foreignKey: "id_missao", as: "Quiz" });
+db.Missao.hasOne(db.Quiz, { foreignKey: "id_missao", as: "quiz" });
 db.Quiz.belongsTo(db.Missao, { foreignKey: "id_missao", as: "Missao" });
-db.Quiz.hasMany(db.QuizOpcao, { foreignKey: "id_quiz", as: "QuizOpcaos" });
-db.QuizOpcao.belongsTo(db.Quiz, { foreignKey: "id_quiz", as: "Quiz" });
+db.Quiz.hasMany(db.QuizOpcao, { foreignKey: "id_quiz", as: "opcoes" });
+db.QuizOpcao.belongsTo(db.Quiz, { foreignKey: "id_quiz", as: "quiz" });
 
 // Associações da Resposta do Usuário
 db.Criancas.hasMany(db.RespostaUsuario, { foreignKey: "id_crianca" });
 db.RespostaUsuario.belongsTo(db.Criancas, { foreignKey: "id_crianca" });
 db.Quiz.hasMany(db.RespostaUsuario, { foreignKey: "id_quiz", as: "Respostas" });
-db.RespostaUsuario.belongsTo(db.Quiz, { foreignKey: "id_quiz", as: "Quiz" });
+db.RespostaUsuario.belongsTo(db.Quiz, { foreignKey: "id_quiz", as: "quiz" });
 
 console.log("Todas as associations foram carregadas com sucesso!");
 

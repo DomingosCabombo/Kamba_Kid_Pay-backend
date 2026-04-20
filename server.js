@@ -7,7 +7,7 @@ require("./src/models/Associations");
 sequelize.sync()
     .then(() => {
         console.log("Banco de dados sincronizado");
-        app.listen(process.env.PORT || 3000, () => {
+        app.listen(process.env.PORT || 3000, "0.0.0.0", () => {
             console.log(`Servidor rodando em http://localhost:${process.env.PORT || 3000}`);
         });
     })

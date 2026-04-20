@@ -3,6 +3,14 @@ const sequelize = require("../config/database");
 const Responsavel = require("../models/Responsavel");
 const Criancas = require("../models/Criancas");
 const LogAdmin = require("../models/LogAdmin");
+const Tarefa = require("../models/Tarefa");
+const Historico = require("../models/HistoricoTransacao");
+const Doacoes = require("../models/Doacoes");
+const ProgressoMissao = require("../models/ProgressoMissao");
+const { ConteudoAssistido } = require("../models/VideoAssistido");
+const CriancaShopItem = require("../models/CriancaShopItem");
+const RespostaUsuario = require("../models/RespostaUsuario");
+const Missao = require("../models/Missoes");
 
 // ============================================
 // GET /api/admin/utilizadores/responsaveis
@@ -272,10 +280,28 @@ exports.deletarResponsavel = async (req, res) => {
             return res.status(404).json({ erro: "RESPONSAVEL_NAO_ENCONTRADO" });
         }
 
-        // Deletar crianças primeiro (por causa da FK)
-        await Criancas.destroy({ where: { id_responsavel: id }, transaction });
+        // 1. Coletar IDs de todas as crianças para deletar registros relacionados
+        const criancas = await Criancas.findAll({ where: { id_responsavel: id }, transaction });
+        const idsCriancas = criancas.map(c => c.id_crianca);
+
+        if (idsCriancas.length > 0) {
+            // Deletar registros relacionados às crianças
+            await Tarefa.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            await Historico.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            await Doacoes.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            await ProgressoMissao.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            await ConteudoAssistido.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            await CriancaShopItem.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            await RespostaUsuario.destroy({ where: { id_crianca: idsCriancas }, transaction });
+            
+            // Deletar as crianças
+            await Criancas.destroy({ where: { id_responsavel: id }, transaction });
+        }
         
-        // Deletar responsável
+        // 2. Deletar missões do responsável
+        await Missao.destroy({ where: { id_responsavel: id }, transaction });
+
+        // 3. Deletar responsável
         await responsavel.destroy({ transaction });
 
         await LogAdmin.create({
@@ -287,7 +313,7 @@ exports.deletarResponsavel = async (req, res) => {
         }, { transaction });
 
         await transaction.commit();
-        res.json({ mensagem: "Responsável deletado permanentemente com sucesso" });
+        res.json({ mensagem: "Responsável e dependentes deletados com sucesso" });
 
     } catch (error) {
         await transaction.rollback();
@@ -448,17 +474,33 @@ exports.deletarCrianca = async (req, res) => {
             return res.status(404).json({ erro: "CRIANCA_NAO_ENCONTRADA" });
         }
 
-        await crianca.destroy();
+        const transaction = await sequelize.transaction();
+        try {
+            // Deletar registros relacionados
+            await Tarefa.destroy({ where: { id_crianca: id }, transaction });
+            await Historico.destroy({ where: { id_crianca: id }, transaction });
+            await Doacoes.destroy({ where: { id_crianca: id }, transaction });
+            await ProgressoMissao.destroy({ where: { id_crianca: id }, transaction });
+            await ConteudoAssistido.destroy({ where: { id_crianca: id }, transaction });
+            await CriancaShopItem.destroy({ where: { id_crianca: id }, transaction });
+            await RespostaUsuario.destroy({ where: { id_crianca: id }, transaction });
 
-        await LogAdmin.create({
-            id_admin: req.usuario.id,
-            acao: "DELETAR",
-            entidade: "crianca",
-            id_entidade: id,
-            detalhes: JSON.stringify({ nome: crianca.nome_completo })
-        });
+            await crianca.destroy({ transaction });
 
-        res.json({ mensagem: "Criança deletada com sucesso" });
+            await LogAdmin.create({
+                id_admin: req.usuario.id,
+                acao: "DELETAR",
+                entidade: "crianca",
+                id_entidade: id,
+                detalhes: JSON.stringify({ nome: crianca.nome_completo })
+            }, { transaction });
+
+            await transaction.commit();
+            res.json({ mensagem: "Criança deletada com sucesso" });
+        } catch (error) {
+            await transaction.rollback();
+            throw error;
+        }
 
     } catch (error) {
         console.error(error);
