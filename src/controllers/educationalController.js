@@ -21,7 +21,7 @@ exports.listContent = async (req, res) => {
         }
 
         const idadeCrianca = crianca.idade;
-        let faixaRecomendada = faixa_etaria;
+        let faixaRecomendada =  '0-100';
         
         if (!faixaRecomendada) {
             if (idadeCrianca <= 8) faixaRecomendada = '6-8';
@@ -29,9 +29,11 @@ exports.listContent = async (req, res) => {
             else faixaRecomendada = '11-12';
         }
 
-        const conteudos = await Conteudo.findAll({
-            where: { faixa_etaria: faixaRecomendada }
-        });
+        //const conteudos = await Conteudo.findAll({
+        //    where: { faixa_etaria: faixaRecomendada }
+        //});
+
+        const conteudos = await Conteudo.findAll();
 
         const conteudosAssistidos = await ConteudoAssistido.findAll({
             where: { id_crianca: criancaId },

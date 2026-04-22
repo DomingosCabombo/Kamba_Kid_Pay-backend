@@ -21,10 +21,10 @@ exports.listarQuizzes = async (req, res) => {
             include: [
                 {
                     model: Quiz,
-                    as: 'Quiz', // Corrigido p/ bater com Associations.js
+                    as: 'quiz', // Corrigido p/ bater com Associations.js
                     include: [{
                         model: QuizOpcao,
-                        as: 'QuizOpcaos' // Corrigido p/ bater com Associations.js
+                        as: 'opcoes' // Corrigido p/ bater com Associations.js
                     }]
                 },
                 {
@@ -35,7 +35,6 @@ exports.listarQuizzes = async (req, res) => {
             ],
             order: [['createdAt', 'DESC']]
         });
-
         // Calcular vezes completado
         const respostas = await RespostaUsuario.findAll({
             include: [{
@@ -46,20 +45,19 @@ exports.listarQuizzes = async (req, res) => {
         });
 
         const resultado = missoesQuiz.map(missao => {
-            const quiz = missao.Quiz; // Usando o alias correto (Maiúsculo)
+            const quiz = missao.quiz.dataValues; // Usando o alias correto (Maiúsculo)
             const conteudo = missao.conteudo;
             
             // Filtrar as respostas deste quiz específico
             const vezesCompletado = respostas.filter(r => r.id_quiz === quiz?.id_quiz).length;
-            
             return {
                 id: missao.id_missao,
                 titulo: missao.titulo,
                 descricao: missao.descricao,
-                categoria: mapearCategoriaFrontend(missao.tipo),
+                categoria: missao.tipo,
                 dificuldade: missao.nivel_minimo === 1 ? 'Fácil' : (missao.nivel_minimo === 2 ? 'Média' : 'Difícil'),
                 pergunta: quiz?.pergunta || '',
-                opcoes: quiz?.QuizOpcaos?.map((op, idx) => ({
+                opcoes: quiz?.opcoes?.map((op, idx) => ({
                     id: op.id_opcao,
                     texto: op.texto,
                     correta: op.correta,
@@ -103,7 +101,6 @@ exports.criarQuiz = async (req, res) => {
             pontosRecompensa,
             id_conteudo  // ← NOVO: ID do vídeo/conteúdo vinculado
         } = req.body;
-
         // Mapear categoria
         let tipo;
         switch (categoria) {
@@ -132,10 +129,9 @@ exports.criarQuiz = async (req, res) => {
             xp_recompensa: pontosRecompensa || 50,
             nivel_minimo: nivelMinimo,
             ativa: true,
-            id_crianca: null,
-            id_conteudo: id_conteudo || null  // ← NOVO: vincular a vídeo (opcional)
+            id_crianca: 1,
+            id_conteudo: id_conteudo || null // ← NOVO: vincular a vídeo (opcional)
         }, { transaction });
-
         // Criar quiz
         const quiz = await Quiz.create({
             pergunta: pergunta,
