@@ -48,7 +48,6 @@ exports.dashboard = async (req, res) => {
             },
             order: [['progresso_atual', 'DESC']]
         });
-console.log("missaoDestaque", missaoDestaque);
         // 🔥 CORREÇÃO: Itens comprados para o avatar
         const itensComprados = await CriancaShopItem.findAll({
             where: { id_crianca: criancaId },
@@ -118,7 +117,7 @@ console.log("missaoDestaque", missaoDestaque);
                 status: t.status,
                 icone: t.icone || "clipboard",
                 categoria: t.categoria || "save"
-            })),
+            })), 
             missao_destaque: missaoDestaque.map(m => ({
                 id: m.id_missao,
                 titulo: m.titulo,
@@ -184,7 +183,9 @@ exports.submitTask = async (req, res) => {
         const criancaId = req.usuario.id;
 
         const tarefa = await Tarefa.findByPk(taskId, { transaction });
+      
         if (!tarefa) {
+            console.log("tarefa não encontrada", criancaId);
             await transaction.rollback();
             return res.status(404).json({
                 erro: "TAREFA_NAO_ENCONTRADA",
@@ -193,6 +194,7 @@ exports.submitTask = async (req, res) => {
         }
 
         if (tarefa.id_crianca !== criancaId) {
+            console.log("tarefa não pertence a você", criancaId);
             await transaction.rollback();
             return res.status(403).json({
                 erro: "SEM_PERMISSAO",
@@ -209,7 +211,9 @@ exports.submitTask = async (req, res) => {
         }
 
         let fotoUrl = null;
+        console.log("tarefa", req.file);
         if (req.file) {
+              console.log("tarefa", req.file);
             fotoUrl = `/uploads/${req.file.filename}`;
         } else if (req.body.foto_base64) {
             // Processar base64 se necessário
@@ -228,7 +232,7 @@ exports.submitTask = async (req, res) => {
         await tarefa.save({ transaction });
 
         await transaction.commit();
-
+console.log("tarefa enviada para aprovação", criancaId);
         res.json({
             mensagem: "Tarefa enviada para aprovação!",
             tarefa: {
@@ -241,7 +245,7 @@ exports.submitTask = async (req, res) => {
 
     } catch (error) {
         await transaction.rollback();
-        console.error(error);
+        console.error("erro ao enviar tarefa",error);
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };

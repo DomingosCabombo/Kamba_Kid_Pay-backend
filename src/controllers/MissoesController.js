@@ -19,14 +19,7 @@ exports.createMission = async (req, res) => {
             crianca_id 
         } = req.body;
 
-        console.log("📝 Criando missão:", {   
-            titulo, 
-            descricao, 
-            tipo,           // ← O frontend envia como "tipo"
-            objetivo_valor, 
-            recompensa, 
-            icone, 
-            crianca_id  });
+      
 
         if (!titulo || !tipo || !objetivo_valor || !crianca_id) {
             return res.status(400).json({ 
