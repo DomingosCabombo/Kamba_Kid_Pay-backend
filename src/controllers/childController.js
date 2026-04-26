@@ -116,7 +116,8 @@ exports.dashboard = async (req, res) => {
                 recompensa: parseFloat(t.recompensa),
                 status: t.status,
                 icone: t.icone || "clipboard",
-                categoria: t.categoria || "save"
+                categoria: t.categoria || "save",
+                crianca_id: t.id_crianca
             })), 
             missao_destaque: missaoDestaque.map(m => ({
                 id: m.id_missao,
@@ -167,7 +168,8 @@ exports.listTasks = async (req, res) => {
                 criado_em: t.createdAt,
                 concluido_em: t.concluido_em,
                 data_limite: t.data_limite,
-                motivo_rejeicao: t.motivo_rejeicao
+                motivo_rejeicao: t.motivo_rejeicao,
+                crianca_id: t.id_crianca
             }))
         });
 
