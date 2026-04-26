@@ -12,7 +12,7 @@ const ProgressoMissao = require("../models/ProgressoMissao");
 exports.createTask = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
-        const { titulo, descricao, recompensa, categoria, crianca_id, icone } = req.body;
+        const { titulo, descricao, recompensa, categoria, crianca_id, icone, data_limite } = req.body;
         const responsavelId = req.usuario.id;
 
         console.log("📝 Criando tarefa:", { titulo, recompensa, crianca_id, categoria });
@@ -43,7 +43,8 @@ exports.createTask = async (req, res) => {
             icone: icone || 'clipboard',
             id_crianca: crianca_id,
             id_responsavel: responsavelId,
-            status: 'pendente'
+            status: 'pendente',
+            data_limite
         }, { transaction });
 
         await transaction.commit();
@@ -99,7 +100,9 @@ exports.listTasks = async (req, res) => {
                 categoria: t.categoria,
                 criado_em: t.createdAt,
                 concluido_em: t.concluido_em,
-                aprovado_em: t.aprovado_em
+                aprovado_em: t.aprovado_em,
+                data_limite: t.data_limite,
+                motivo_rejeicao: t.motivo_rejeicao
             }))
         });
 

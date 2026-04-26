@@ -77,6 +77,10 @@ const Tarefa = sequelize.define("tarefas", {
             model: 'missao',
             key: 'id_missao'
         }
+    },
+    data_limite: {
+        type: DataTypes.DATE,
+        allowNull: true
     }
 }, {
     tableName: "tarefas",

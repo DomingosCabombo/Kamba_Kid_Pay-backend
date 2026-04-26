@@ -165,7 +165,9 @@ exports.listTasks = async (req, res) => {
                 categoria: t.categoria || "save",
                 foto_url: t.foto_comprovacao ? `/uploads/${t.foto_comprovacao}` : null,
                 criado_em: t.createdAt,
-                concluido_em: t.concluido_em
+                concluido_em: t.concluido_em,
+                data_limite: t.data_limite,
+                motivo_rejeicao: t.motivo_rejeicao
             }))
         });
 
@@ -202,7 +204,7 @@ exports.submitTask = async (req, res) => {
             });
         }
 
-        if (tarefa.status !== 'pendente') {
+        if (tarefa.status !== 'pendente' && tarefa.status !== 'rejeitada') {
             await transaction.rollback();
             return res.status(400).json({
                 erro: "DADOS_INVALIDOS",
