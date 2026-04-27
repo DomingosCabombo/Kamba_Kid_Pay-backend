@@ -116,7 +116,8 @@ exports.dashboard = async (req, res) => {
                 recompensa: parseFloat(t.recompensa),
                 status: t.status,
                 icone: t.icone || "clipboard",
-                categoria: t.categoria || "save"
+                categoria: t.categoria || "save",
+                crianca_id: t.id_crianca
             })), 
             missao_destaque: missaoDestaque.map(m => ({
                 id: m.id_missao,
@@ -165,7 +166,10 @@ exports.listTasks = async (req, res) => {
                 categoria: t.categoria || "save",
                 foto_url: t.foto_comprovacao ? `/uploads/${t.foto_comprovacao}` : null,
                 criado_em: t.createdAt,
-                concluido_em: t.concluido_em
+                concluido_em: t.concluido_em,
+                data_limite: t.data_limite,
+                motivo_rejeicao: t.motivo_rejeicao,
+                crianca_id: t.id_crianca
             }))
         });
 
@@ -202,7 +206,7 @@ exports.submitTask = async (req, res) => {
             });
         }
 
-        if (tarefa.status !== 'pendente') {
+        if (tarefa.status !== 'pendente' && tarefa.status !== 'rejeitada') {
             await transaction.rollback();
             return res.status(400).json({
                 erro: "DADOS_INVALIDOS",
@@ -214,7 +218,7 @@ exports.submitTask = async (req, res) => {
         console.log("tarefa", req.file);
         if (req.file) {
               console.log("tarefa", req.file);
-            fotoUrl = `/uploads/${req.file.filename}`;
+            fotoUrl = req.file.filename;
         } else if (req.body.foto_base64) {
             // Processar base64 se necessário
             fotoUrl = req.body.foto_base64; // Simplificado
@@ -238,7 +242,7 @@ console.log("tarefa enviada para aprovação", criancaId);
             tarefa: {
                 id: tarefa.id_tarefa,
                 status: tarefa.status,
-                foto_url: fotoUrl,
+                foto_url: fotoUrl ? `/uploads/${fotoUrl}` : null,
                 concluido_em: tarefa.concluido_em
             }
         });

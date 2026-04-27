@@ -80,4 +80,11 @@ router.post("/shop/items", adminAuthMiddleware, adminShopController.criarItem);
 router.put("/shop/items/:id", adminAuthMiddleware, adminShopController.atualizarItem);
 router.delete("/shop/items/:id", adminAuthMiddleware, adminShopController.deletarItem);
 
+// Mascotes
+const mascoteController = require("../controllers/mascoteController");
+router.get("/mascotes", adminAuthMiddleware, mascoteController.adminList);
+router.post("/mascotes", adminAuthMiddleware, mascoteController.adminCreate);
+router.put("/mascotes/:id", adminAuthMiddleware, mascoteController.adminUpdate);
+router.delete("/mascotes/:id", adminAuthMiddleware, mascoteController.adminDelete);
+
 module.exports = router;

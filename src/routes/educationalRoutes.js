@@ -10,6 +10,7 @@ router.get("/", educationalController.listContent);
 router.patch("/:contentId/complete", educationalController.completeContent);
 
 // Rotas de Quiz para Crianças
+router.get("/quiz/geral", educationalController.getGeneralQuizzes);
 router.get("/quiz/:missaoId", educationalController.getQuizDetails);
 router.post("/quiz/:quizId/submit", educationalController.submitQuiz);
 

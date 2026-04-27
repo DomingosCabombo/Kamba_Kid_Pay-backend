@@ -5,6 +5,7 @@ const Quiz = require("../models/Quiz");
 const QuizOpcao = require("../models/QuizOpcao");
 const RespostaUsuario = require("../models/RespostaUsuario");
 const sequelize = require("../config/database");
+const { Op } = require("sequelize");
 
 // GET /api/educational-content
 exports.listContent = async (req, res) => {
@@ -156,7 +157,47 @@ exports.submitQuiz = async (req, res) => {
     }
 };
 
-// PATCH /api/educational-content/:contentId/complete
+// GET /api/educational-content/quiz/geral?quantidade=5
+// Returns N random quizzes from the whole database (for general test mode)
+exports.getGeneralQuizzes = async (req, res) => {
+    try {
+        const quantidade = Math.min(parseInt(req.query.quantidade) || 5, 10);
+
+        // Fetch all quizzes with their options
+        const todos = await Quiz.findAll({
+            include: [{
+                model: QuizOpcao,
+                as: 'opcoes',
+                attributes: ['id_opcao', 'texto', 'correta', 'id_quiz']
+            }]
+        });
+
+        if (todos.length === 0) {
+            return res.status(404).json({ erro: "SEM_QUIZZES", mensagem: "Nenhum quiz encontrado na base de dados." });
+        }
+
+        // Shuffle and pick
+        const shuffled = todos.sort(() => Math.random() - 0.5).slice(0, quantidade);
+
+        res.json({
+            quizzes: shuffled.map(q => ({
+                id: q.id_quiz,
+                pergunta: q.pergunta,
+                xp_recompensa: q.xp_recompensa || 20,
+                opcoes: q.opcoes.map(o => ({
+                    id_opcao: o.id_opcao,
+                    texto: o.texto,
+                    correta: o.correta,
+                    id_quiz: o.id_quiz
+                }))
+            }))
+        });
+
+    } catch (error) {
+        console.error("getGeneralQuizzes error:", error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
 exports.completeContent = async (req, res) => {
     const transaction = await sequelize.transaction();
     try {
