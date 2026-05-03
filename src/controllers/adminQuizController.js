@@ -57,6 +57,7 @@ exports.listarQuizzes = async (req, res) => {
                 categoria: missao.tipo,
                 dificuldade: missao.nivel_minimo === 1 ? 'Fácil' : (missao.nivel_minimo === 2 ? 'Média' : 'Difícil'),
                 pergunta: quiz?.pergunta || '',
+                midia_url: quiz?.midia_url ? `/uploads/${quiz.midia_url}` : null,
                 opcoes: quiz?.opcoes?.map((op, idx) => ({
                     id: op.id_opcao,
                     texto: op.texto,
@@ -133,9 +134,11 @@ exports.criarQuiz = async (req, res) => {
             id_conteudo: id_conteudo || null // ← NOVO: vincular a vídeo (opcional)
         }, { transaction });
         // Criar quiz
+        const midia_url = req.file ? req.file.filename : null;
         const quiz = await Quiz.create({
             pergunta: pergunta,
-            id_missao: missao.id_missao
+            id_missao: missao.id_missao,
+            midia_url: midia_url
         }, { transaction });
 
         // Criar opções
@@ -283,8 +286,14 @@ exports.atualizarQuiz = async (req, res) => {
         // Atualizar quiz
         const quiz = await Quiz.findOne({ where: { id_missao: id }, transaction });
 
-        if (quiz && pergunta) {
-            await quiz.update({ pergunta }, { transaction });
+        if (quiz) {
+            const updates = {};
+            if (pergunta) updates.pergunta = pergunta;
+            if (req.file) updates.midia_url = req.file.filename;
+            
+            if (Object.keys(updates).length > 0) {
+                await quiz.update(updates, { transaction });
+            }
         }
 
         // Atualizar opções se fornecidas

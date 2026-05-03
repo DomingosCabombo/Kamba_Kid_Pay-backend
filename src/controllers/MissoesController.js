@@ -195,3 +195,56 @@ exports.updateProgress = async (req, res) => {
         res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
+// PUT /api/missions/:missionId
+exports.updateMission = async (req, res) => {
+    try {
+        const { titulo, descricao, tipo, objetivo_valor, recompensa, icone } = req.body;
+        const missao = await Missao.findByPk(req.params.missionId);
+
+        if (!missao) {
+            return res.status(404).json({ erro: "MISSAO_NAO_ENCONTRADA", mensagem: "Missão não encontrada." });
+        }
+
+        // Verifica se é o responsável dono
+        const crianca = await Crianca.findByPk(missao.id_crianca);
+        if (!crianca || crianca.id_responsavel !== req.usuario.id) {
+            return res.status(403).json({ erro: "SEM_PERMISSAO", mensagem: "Você não tem acesso a esta missão." });
+        }
+
+        if (titulo) missao.titulo = titulo;
+        if (descricao) missao.descricao = descricao;
+        if (tipo) missao.tipo = tipo;
+        if (objetivo_valor !== undefined) missao.objetivo_valor = parseFloat(objetivo_valor);
+        if (recompensa !== undefined) missao.xp_recompensa = parseFloat(recompensa);
+        if (icone) missao.icone = icone;
+
+        await missao.save();
+
+        res.json({ mensagem: "Missão atualizada com sucesso.", missao });
+    } catch (error) {
+        console.error("❌ Erro ao atualizar missão:", error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};
+
+// DELETE /api/missions/:missionId
+exports.deleteMission = async (req, res) => {
+    try {
+        const missao = await Missao.findByPk(req.params.missionId);
+
+        if (!missao) {
+            return res.status(404).json({ erro: "MISSAO_NAO_ENCONTRADA", mensagem: "Missão não encontrada." });
+        }
+
+        const crianca = await Crianca.findByPk(missao.id_crianca);
+        if (!crianca || crianca.id_responsavel !== req.usuario.id) {
+            return res.status(403).json({ erro: "SEM_PERMISSAO", mensagem: "Você não tem acesso a esta missão." });
+        }
+
+        await missao.destroy();
+        res.json({ mensagem: "Missão apagada com sucesso." });
+    } catch (error) {
+        console.error("❌ Erro ao apagar missão:", error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
+    }
+};

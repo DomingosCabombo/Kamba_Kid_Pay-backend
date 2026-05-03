@@ -59,9 +59,10 @@ router.delete("/videos/:id", adminAuthMiddleware, adminConteudoController.deleta
 
 // Quizzes
 const adminQuizController = require("../controllers/adminQuizController");
+const { upload } = require("../middlewares/upload");
 router.get("/quizzes", adminAuthMiddleware, adminQuizController.listarQuizzes);
-router.post("/quizzes", adminAuthMiddleware, adminQuizController.criarQuiz);
-router.put("/quizzes/:id", adminAuthMiddleware, adminQuizController.atualizarQuiz);
+router.post("/quizzes", adminAuthMiddleware, upload.single("midia"), adminQuizController.criarQuiz);
+router.put("/quizzes/:id", adminAuthMiddleware, upload.single("midia"), adminQuizController.atualizarQuiz);
 router.delete("/quizzes/:id", adminAuthMiddleware, adminQuizController.deletarQuiz);
 
 // Campanhas
