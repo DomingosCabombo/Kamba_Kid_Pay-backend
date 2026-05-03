@@ -107,6 +107,10 @@ exports.listMissions = async (req, res) => {
                 });
             }
             where.id_crianca = crianca_id;
+        } else {
+            // Filtrar apenas crianças do responsável autenticado
+            const criancas = await Crianca.findAll({ where: { id_responsavel: responsavelId }, attributes: ['id_crianca'] });
+            where.id_crianca = criancas.map(c => c.id_crianca);
         }
         if (ativa !== undefined) where.ativa = ativa === 'true';
 
@@ -141,6 +145,7 @@ exports.listMissions = async (req, res) => {
                             (m.tipo === 'saude' ? "heart" : 
                             (m.tipo === 'solidariedade' ? "hand-heart" : "cart"))))),
                 ativa: m.ativa,
+                concluida: m.concluida || (parseFloat(m.progresso_atual) >= parseFloat(m.objetivo_valor) && parseFloat(m.objetivo_valor) > 0),
                 crianca_id: m.id_crianca
             }))
         });
