@@ -22,6 +22,7 @@ const formatMascote = (m, desbloqueado, ativo) => ({
     descricao: m.descricao,
     tipo: m.tipo,
     emoji: m.emoji,
+    imagem_url: m.imagem_url,
     bg_color: m.bg_color,
     preco: m.preco, // Preço agora em XP
     ativo,

@@ -8,6 +8,7 @@ const mascotes = [
     descricao: 'O teu companheiro clássico, sempre animado para te ajudar a aprender!',
     tipo: 'Robô Espacial',
     emoji: '🤖',
+    imagem_url: 'kamba_azul.svg',
     bg_color: '#DBEAFE',
     preco: 0,
     msg_correct: JSON.stringify(['Isso mesmo! Tu és incrível! ⭐', 'Acertaste! Tens muito talento! 🎉', 'Fantástico! Continua assim! 🚀']),
@@ -22,6 +23,7 @@ const mascotes = [
     descricao: 'O guerreiro da natureza que adora tanto poupar dinheiro como o planeta!',
     tipo: 'Explorador Verde',
     emoji: '🦕',
+    imagem_url: 'kamba_verde.svg',
     bg_color: '#DCFCE7',
     preco: 180,
     msg_correct: JSON.stringify(['RAWR! Que resposta incrível! 🦕', 'Sim! O dinosauro aprova! 🌿', 'Parabéns! Voa mais alto! 🦅']),
@@ -36,6 +38,7 @@ const mascotes = [
     descricao: 'A princesa do aprendizado que transforma cada lição numa festa!',
     tipo: 'Unicórnio Mágico',
     emoji: '🦄',
+    imagem_url: 'kamba_rosa.svg',
     bg_color: '#FCE7F3',
     preco: 200,
     msg_correct: JSON.stringify(['Xiiii que bonito! Acertaste! ✨', 'A magia da aprendizagem! 🌈', 'Lindíssimo! Tu és brilhante! 💖']),
@@ -45,18 +48,18 @@ const mascotes = [
     ordem: 3
   },
   {
-    nome: 'Nutty Laranja',
+    nome: 'Nutty Arco-Íris',
     tagline: 'Esquilosamente esperto!',
     descricao: 'O esquilo ninja que guarda poupanças tão bem quanto as nozes!',
     tipo: 'Esquilo Ninja',
-    emoji: 'Squirrel',
+    emoji: '🐿️',
+    imagem_url: 'kamba_arco_iris.svg',
     bg_color: '#FED7AA',
     preco: 250,
     msg_correct: JSON.stringify(['NUT-CRACKER! Resposta correcta! 🐿️', 'Sou tão bom em guardar nozes quanto tu em saber! 🌰', 'ESQUILO APROVA! Bravo! 🐿️✨']),
     msg_wrong: JSON.stringify(['Ó querido... Quase! 🐿️', 'Nenhum esquilo desiste de uma noz! 💪', 'The nuts não param aqui! Tenta de novo! 🌰']),
     msg_greeting: JSON.stringify(['NUT-HELLO! Hora de aprender! 🐿️', 'O esquilo mais esperto chegou! 🌰', 'Hoje guardamos conhecimento! 🧠']),
     msg_drag: JSON.stringify(['Arrasta como um esquilo ágil! 🐿️', 'Guarda a resposta certa! 🌰', 'O esquilo fareja a resposta! 👃']),
-    emoji: '🐿️',
     ordem: 4
   },
   {
@@ -65,6 +68,7 @@ const mascotes = [
     descricao: 'O super-herói das poupanças que protege o teu dinheiro!',
     tipo: 'Super Herói',
     emoji: '🦸',
+    imagem_url: 'kamba_dourado.svg',
     bg_color: '#FEF3C7',
     preco: 350,
     msg_correct: JSON.stringify(['SUPER RESPOSTA! O herói aprova! 🦸', 'Com grandes poderes, grandes respostas! ⚡', 'KOIN POWER! Incrível! 💰']),
@@ -79,6 +83,7 @@ const mascotes = [
     descricao: 'A astronauta das finanças que explora o universo do conhecimento!',
     tipo: 'Astronauta Cósmica',
     emoji: '👩‍🚀',
+    imagem_url: 'kamba_espacial.svg',
     bg_color: '#EDE9FE',
     preco: 400,
     msg_correct: JSON.stringify(['Houston, temos uma resposta correcta! 🚀', 'Missão cumprida! Tu és um astronauta do saber! ⭐', 'LAUNCH! Fantástico! 🌙']),
@@ -93,10 +98,12 @@ async function seed() {
   try {
     await sequelize.sync();
     for (const m of mascotes) {
-      await Mascote.findOrCreate({
-        where: { nome: m.nome },
-        defaults: m
-      });
+      const existing = await Mascote.findOne({ where: { nome: m.nome } });
+      if (existing) {
+        await existing.update(m);
+      } else {
+        await Mascote.create(m);
+      }
     }
     console.log("Mascotes semeados com sucesso!");
     process.exit(0);
