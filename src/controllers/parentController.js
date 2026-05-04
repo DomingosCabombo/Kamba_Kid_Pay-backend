@@ -505,6 +505,13 @@ exports.updateChild = async (req, res) => {
 
         if (nome) crianca.nome_completo = nome;
         if (idade) crianca.idade = idade;
+        if (req.body.senha) {
+            crianca.senha = await bcrypt.hash(req.body.senha, 10);
+        }
+        if (req.body.saldo_gastar !== undefined) crianca.saldo_gastar = req.body.saldo_gastar;
+        if (req.body.saldo_poupar !== undefined) crianca.saldo_poupar = req.body.saldo_poupar;
+        if (req.body.saldo_ajudar !== undefined) crianca.saldo_ajudar = req.body.saldo_ajudar;
+        
         await crianca.save();
 
         res.json({

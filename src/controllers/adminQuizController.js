@@ -1,14 +1,14 @@
-// controllers/adminQuizController.js
-const { Op } = require("sequelize");
 const db = require("../models/Associations");
-const sequelize = require("../config/database");
-const Missao = require("../models/Missoes");
-const ProgressoMissao = require("../models/ProgressoMissao");
-const Quiz = require("../models/Quiz");
-const QuizOpcao = require("../models/QuizOpcao");
-const { Conteudo } = require("../models/VideoAssistido")
-const RespostaUsuario = require("../models/RespostaUsuario");
-const LogAdmin = require("../models/LogAdmin");
+const { 
+    Missao, 
+    Quiz, 
+    QuizOpcao, 
+    RespostaUsuario, 
+    Conteudo,
+    LogAdmin,
+    sequelize 
+} = db;
+const { Op } = require("sequelize");
 
 
 // ============================================
@@ -21,40 +21,44 @@ exports.listarQuizzes = async (req, res) => {
             include: [
                 {
                     model: Quiz,
-                    as: 'quiz', // Corrigido p/ bater com Associations.js
+                    as: 'quiz',
                     include: [{
                         model: QuizOpcao,
-                        as: 'opcoes' // Corrigido p/ bater com Associations.js
+                        as: 'opcoes'
                     }]
-                },
-                {
-                    model: Conteudo,
-                    as: 'conteudo',
-                    attributes: ['id_conteudo', 'titulo', 'tipo', 'thumbnail_url']
                 }
             ],
             order: [['createdAt', 'DESC']]
         });
-        // Calcular vezes completado
+
         const respostas = await RespostaUsuario.findAll({
-            include: [{
-                model: Quiz,
-                as: 'quiz',
-                attributes: ['id_missao']
-            }]
+            attributes: ['id_quiz']
         });
 
-        const resultado = missoesQuiz.map(missao => {
-            const quiz = missao.quiz.dataValues; // Usando o alias correto (Maiúsculo)
-            const conteudo = missao.conteudo;
+        const counts = {};
+        respostas.forEach(r => {
+            if (r.id_quiz) counts[r.id_quiz] = (counts[r.id_quiz] || 0) + 1;
+        });
+
+        const resultado = missoesQuiz.map(m => {
+            const missao = m.get({ plain: true });
+            const quiz = missao.quiz;
             
-            // Filtrar as respostas deste quiz específico
-            const vezesCompletado = respostas.filter(r => r.id_quiz === quiz?.id_quiz).length;
+            const vezesCompletado = quiz ? (counts[quiz.id_quiz] || 0) : 0;
+            
+            const catMap = {
+                'poupanca': 'Poupar',
+                'consumo': 'Gastar',
+                'solidariedade': 'Ajudar',
+                'estudo': 'Investir',
+                'saude': 'Planejamento'
+            };
+
             return {
                 id: missao.id_missao,
-                titulo: missao.titulo,
-                descricao: missao.descricao,
-                categoria: missao.tipo,
+                titulo: missao.titulo || 'Sem Título',
+                descricao: missao.descricao || '',
+                categoria: catMap[missao.tipo] || 'Poupar',
                 dificuldade: missao.nivel_minimo === 1 ? 'Fácil' : (missao.nivel_minimo === 2 ? 'Média' : 'Difícil'),
                 pergunta: quiz?.pergunta || '',
                 opcoes: quiz?.opcoes?.map((op, idx) => ({
@@ -63,24 +67,18 @@ exports.listarQuizzes = async (req, res) => {
                     correta: op.correta,
                     icone: ['💰', '🏦', '💸', '🎁', '🛒', '🤔', '💳', '🚫'][idx % 8]
                 })) || [],
-                explicacao: missao.descricao,
-                pontosRecompensa: missao.xp_recompensa,
+                explicacao: missao.descricao || '',
+                pontosRecompensa: missao.xp_recompensa || 0,
                 vezesCompletado: vezesCompletado,
-                dataCriacao: missao.createdAt,
-                videoVinculado: conteudo ? {
-                    id: conteudo.id_conteudo,
-                    titulo: conteudo.titulo,
-                    thumbnail: conteudo.thumbnail_url
-                } : null
+                dataCriacao: missao.createdAt
             };
         });
 
         res.json({ total: resultado.length, quizzes: resultado });
 
     } catch (error) {
-        console.error("ERRO CRÍTICO LISTAR QUIZZES:", error);
-        console.error(error.stack);
-        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message, stack: error.stack });
+        console.error("ERRO LISTAR QUIZZES:", error);
+        res.status(500).json({ erro: "ERRO_INTERNO", mensagem: error.message });
     }
 };
 
@@ -283,8 +281,13 @@ exports.atualizarQuiz = async (req, res) => {
         // Atualizar quiz
         const quiz = await Quiz.findOne({ where: { id_missao: id }, transaction });
 
-        if (quiz && pergunta) {
-            await quiz.update({ pergunta }, { transaction });
+        if (quiz) {
+            const updates = {};
+            if (pergunta) updates.pergunta = pergunta;
+            
+            if (Object.keys(updates).length > 0) {
+                await quiz.update(updates, { transaction });
+            }
         }
 
         // Atualizar opções se fornecidas

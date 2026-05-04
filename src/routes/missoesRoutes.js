@@ -4,10 +4,12 @@ const router = express.Router();
 const missoesController = require("../controllers/MissoesController");
 const { authMiddleware, requireParent } = require("../middlewares/auth");
 
-router.use(authMiddleware, requireParent);
+router.use(authMiddleware);
 
-router.post("/", missoesController.createMission);
-router.get("/", missoesController.listMissions);
+router.post("/", requireParent, missoesController.createMission);
+router.get("/", requireParent, missoesController.listMissions);
 router.patch("/:missionId/progress", missoesController.updateProgress);
+router.put("/:missionId", requireParent, missoesController.updateMission);
+router.delete("/:missionId", requireParent, missoesController.deleteMission);
 
 module.exports = router;
