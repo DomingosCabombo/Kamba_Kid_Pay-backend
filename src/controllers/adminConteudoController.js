@@ -30,27 +30,44 @@ exports.listarConteudos = async (req, res) => {
 // ============================================
 exports.criarConteudo = async (req, res) => {
     try {
+        console.log("CRIAR CONTEUDO - BODY:", req.body);
+        console.log("CRIAR CONTEUDO - FILES:", req.files);
+
         const {
             titulo, descricao, tipo, faixa_etaria,
             thumbnail_url, url, duracao, topico, xp_recompensa, id_missao
         } = req.body;
 
         // Se ficheiros foram enviados via upload, usar os caminhos locais
-        let videoUrl = url;
-        let thumbUrl = thumbnail_url;
+        let videoUrl = url || "";
+        let thumbUrl = thumbnail_url || "";
 
         if (req.files) {
             if (req.files.video && req.files.video[0]) {
                 videoUrl = `/uploads/${req.files.video[0].filename}`;
+                console.log("VIDEO UPLOAD DETECTADO:", videoUrl);
             }
             if (req.files.thumbnail && req.files.thumbnail[0]) {
                 thumbUrl = `/uploads/${req.files.thumbnail[0].filename}`;
+                console.log("THUMBNAIL UPLOAD DETECTADO:", thumbUrl);
             }
         }
 
+        if (!videoUrl) {
+            return res.status(400).json({ erro: "URL_OBRIGATORIA", mensagem: "O vídeo precisa de uma URL ou um ficheiro local." });
+        }
+
         const novoConteudo = await Conteudo.create({
-            titulo, descricao, tipo, faixa_etaria,
-            thumbnail_url: thumbUrl, url: videoUrl, duracao, topico, xp_recompensa, id_missao
+            titulo, 
+            descricao, 
+            tipo: tipo || 'video', 
+            faixa_etaria: faixa_etaria || '9-10',
+            thumbnail_url: thumbUrl, 
+            url: videoUrl, 
+            duracao: duracao || "0:00", 
+            topico: topico || "geral", 
+            xp_recompensa: xp_recompensa || 10, 
+            id_missao: id_missao || null
         });
 
         await LogAdmin.create({
@@ -73,17 +90,26 @@ exports.criarConteudo = async (req, res) => {
 exports.atualizarConteudo = async (req, res) => {
     try {
         const { id } = req.params;
+        console.log("ATUALIZAR CONTEUDO - ID:", id);
+        console.log("ATUALIZAR CONTEUDO - BODY:", req.body);
+        console.log("ATUALIZAR CONTEUDO - FILES:", req.files);
+        
         const updates = { ...req.body };
 
         // Se ficheiros foram enviados via upload, usar os caminhos locais
         if (req.files) {
             if (req.files.video && req.files.video[0]) {
                 updates.url = `/uploads/${req.files.video[0].filename}`;
+                console.log("VIDEO UPLOAD (UPDATE) DETECTADO:", updates.url);
             }
             if (req.files.thumbnail && req.files.thumbnail[0]) {
                 updates.thumbnail_url = `/uploads/${req.files.thumbnail[0].filename}`;
+                console.log("THUMBNAIL UPLOAD (UPDATE) DETECTADO:", updates.thumbnail_url);
             }
         }
+
+        // Limpar campos que podem vir como strings "null" ou "undefined" do FormData
+        if (updates.id_missao === 'null' || updates.id_missao === 'undefined') updates.id_missao = null;
 
         const conteudo = await Conteudo.findByPk(id);
         if (!conteudo) {
