@@ -22,10 +22,6 @@ const Quiz = sequelize.define("quiz", {
             model: 'missao',
             key: 'id_missao'
         }
-    },
-    midia_url: {
-        type: DataTypes.STRING,
-        allowNull: true
     }
 }, {
     tableName: "quiz",

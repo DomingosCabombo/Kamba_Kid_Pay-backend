@@ -51,18 +51,18 @@ router.patch("/tarefas/:id/status", adminAuthMiddleware, adminTarefasController.
 
 // Vídeos (Conteúdo)
 const adminConteudoController = require("../controllers/adminConteudoController");
+const { upload } = require("../middlewares/upload");
 router.get("/videos", adminAuthMiddleware, adminConteudoController.listarConteudos);
 router.get("/videos/estatisticas", adminAuthMiddleware, adminConteudoController.listarConteudosComViews);
-router.post("/videos", adminAuthMiddleware, adminConteudoController.criarConteudo);
-router.put("/videos/:id", adminAuthMiddleware, adminConteudoController.atualizarConteudo);
+router.post("/videos", adminAuthMiddleware, upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), adminConteudoController.criarConteudo);
+router.put("/videos/:id", adminAuthMiddleware, upload.fields([{ name: 'video', maxCount: 1 }, { name: 'thumbnail', maxCount: 1 }]), adminConteudoController.atualizarConteudo);
 router.delete("/videos/:id", adminAuthMiddleware, adminConteudoController.deletarConteudo);
 
 // Quizzes
 const adminQuizController = require("../controllers/adminQuizController");
-const { upload } = require("../middlewares/upload");
 router.get("/quizzes", adminAuthMiddleware, adminQuizController.listarQuizzes);
-router.post("/quizzes", adminAuthMiddleware, upload.single("midia"), adminQuizController.criarQuiz);
-router.put("/quizzes/:id", adminAuthMiddleware, upload.single("midia"), adminQuizController.atualizarQuiz);
+router.post("/quizzes", adminAuthMiddleware, adminQuizController.criarQuiz);
+router.put("/quizzes/:id", adminAuthMiddleware, adminQuizController.atualizarQuiz);
 router.delete("/quizzes/:id", adminAuthMiddleware, adminQuizController.deletarQuiz);
 
 // Campanhas

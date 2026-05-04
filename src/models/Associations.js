@@ -15,6 +15,7 @@ const QuizOpcao = require("./QuizOpcao")
 const RespostaUsuario = require("./RespostaUsuario");
 const Mascote = require("./Mascote");
 const CriancaMascote = require("./CriancaMascote");
+const LogAdmin = require("./LogAdmin");
 
 
 const db = {
@@ -35,6 +36,7 @@ const db = {
     RespostaUsuario,
     Mascote,
     CriancaMascote,
+    LogAdmin,
     sequelize
 };
 
