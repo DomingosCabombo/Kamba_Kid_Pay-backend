@@ -7,7 +7,7 @@ const { authMiddleware, requireParent } = require("../middlewares/auth");
 router.use(authMiddleware);
 
 router.post("/", requireParent, missoesController.createMission);
-router.get("/", requireParent, missoesController.listMissions);
+router.get("/", missoesController.listMissions);
 router.patch("/:missionId/progress", missoesController.updateProgress);
 router.put("/:missionId", requireParent, missoesController.updateMission);
 router.delete("/:missionId", requireParent, missoesController.deleteMission);

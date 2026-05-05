@@ -24,8 +24,12 @@ const Mascote = sequelize.define("mascote", {
         allowNull: true
     },
     emoji: {
-        type: DataTypes.STRING(10),
-        allowNull: false
+        type: DataTypes.STRING(255), // Increased to support filenames if needed
+        allowNull: true
+    },
+    imagem_url: {
+        type: DataTypes.STRING(255),
+        allowNull: true
     },
     bg_color: {
         type: DataTypes.STRING(20),

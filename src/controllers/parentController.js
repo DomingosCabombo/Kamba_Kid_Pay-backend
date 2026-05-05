@@ -7,6 +7,8 @@ const Missao = require("../models/Missoes");
 const Campanha = require("../models/Campanha");
 const Historico = require("../models/HistoricoTransacao");
 const Responsavel = require("../models/Responsavel");
+const Mascote = require("../models/Mascote");
+const CriancaMascote = require("../models/CriancaMascote");
 const bcrypt = require("bcrypt");
 
 // ============================================
@@ -138,7 +140,16 @@ exports.dashboard = async (req, res) => {
         const responsavelId = req.usuario.id;
 
         const criancas = await Criancas.findAll({
-            where: { id_responsavel: responsavelId }
+            where: { id_responsavel: responsavelId },
+            include: [
+                {
+                    model: CriancaMascote,
+                    as: 'mascotes',
+                    where: { ativo: true },
+                    required: false,
+                    include: [{ model: Mascote, as: 'mascote' }]
+                }
+            ]
         });
 
         const criancasIds = criancas.map(c => c.id_crianca);
@@ -172,18 +183,27 @@ exports.dashboard = async (req, res) => {
         // 🔧 CALCULAR DESEMPENHO MENSAL (AGORA DEFINIDO)
         const desempenhoMensal = await calcularDesempenhoMensal(criancasIds);
 
-        const dependentes = criancas.map(c => ({
-            id: c.id_crianca,
-            nome: c.nome_completo,
-            idade: c.idade,
-            nivel: c.nivel,
-            potes: {
-                saldo_gastar: parseFloat(c.saldo_gastar),
-                saldo_poupar: parseFloat(c.saldo_poupar),
-                saldo_ajudar: parseFloat(c.saldo_ajudar),
-                total: parseFloat(c.saldo_gastar) + parseFloat(c.saldo_poupar) + parseFloat(c.saldo_ajudar)
-            }
-        }));
+        const dependentes = criancas.map(c => {
+            const mascoteAtivo = c.mascotes && c.mascotes.length > 0 ? c.mascotes[0].mascote : null;
+            return {
+                id: c.id_crianca,
+                nome: c.nome_completo,
+                idade: c.idade,
+                nivel: c.nivel,
+                potes: {
+                    saldo_gastar: parseFloat(c.saldo_gastar),
+                    saldo_poupar: parseFloat(c.saldo_poupar),
+                    saldo_ajudar: parseFloat(c.saldo_ajudar),
+                    total: parseFloat(c.saldo_gastar) + parseFloat(c.saldo_poupar) + parseFloat(c.saldo_ajudar)
+                },
+                mascote: mascoteAtivo ? {
+                    id: mascoteAtivo.id_mascote,
+                    nome: mascoteAtivo.nome,
+                    emoji: mascoteAtivo.emoji,
+                    imagem_url: mascoteAtivo.imagem_url
+                } : null
+            };
+        });
 
         res.json({
             resumo: {
@@ -227,22 +247,40 @@ exports.dashboard = async (req, res) => {
 exports.listChildren = async (req, res) => {
     try {
         const criancas = await Criancas.findAll({
-            where: { id_responsavel: req.usuario.id }
+            where: { id_responsavel: req.usuario.id },
+            include: [
+                {
+                    model: CriancaMascote,
+                    as: 'mascotes',
+                    where: { ativo: true },
+                    required: false,
+                    include: [{ model: Mascote, as: 'mascote' }]
+                }
+            ]
         });
 
         res.json({
-            dependentes: criancas.map(c => ({
-                id: c.id_crianca,
-                nome: c.nome_completo,
-                idade: c.idade,
-                nivel: c.nivel,
-                potes: {
-                    saldo_gastar: parseFloat(c.saldo_gastar),
-                    saldo_poupar: parseFloat(c.saldo_poupar),
-                    saldo_ajudar: parseFloat(c.saldo_ajudar),
-                    total: parseFloat(c.saldo_gastar) + parseFloat(c.saldo_poupar) + parseFloat(c.saldo_ajudar)
-                }
-            }))
+            dependentes: criancas.map(c => {
+                const mascoteAtivo = c.mascotes && c.mascotes.length > 0 ? c.mascotes[0].mascote : null;
+                return {
+                    id: c.id_crianca,
+                    nome: c.nome_completo,
+                    idade: c.idade,
+                    nivel: c.nivel,
+                    potes: {
+                        saldo_gastar: parseFloat(c.saldo_gastar),
+                        saldo_poupar: parseFloat(c.saldo_poupar),
+                        saldo_ajudar: parseFloat(c.saldo_ajudar),
+                        total: parseFloat(c.saldo_gastar) + parseFloat(c.saldo_poupar) + parseFloat(c.saldo_ajudar)
+                    },
+                    mascote: mascoteAtivo ? {
+                        id: mascoteAtivo.id_mascote,
+                        nome: mascoteAtivo.nome,
+                        emoji: mascoteAtivo.emoji,
+                        imagem_url: mascoteAtivo.imagem_url
+                    } : null
+                };
+            })
         });
 
     } catch (error) {
@@ -338,7 +376,17 @@ exports.childStats = async (req, res) => {
     try {
         const { childId } = req.params;
         
-        const crianca = await Criancas.findByPk(childId);
+        const crianca = await Criancas.findByPk(childId, {
+            include: [
+                {
+                    model: CriancaMascote,
+                    as: 'mascotes',
+                    where: { ativo: true },
+                    required: false,
+                    include: [{ model: Mascote, as: 'mascote' }]
+                }
+            ]
+        });
         if (!crianca) {
             return res.status(404).json({ 
                 erro: "CRIANCA_NAO_ENCONTRADA", 
@@ -388,7 +436,13 @@ exports.childStats = async (req, res) => {
                     saldo_poupar: parseFloat(crianca.saldo_poupar),
                     saldo_ajudar: parseFloat(crianca.saldo_ajudar),
                     total: parseFloat(crianca.saldo_gastar) + parseFloat(crianca.saldo_poupar) + parseFloat(crianca.saldo_ajudar)
-                }
+                },
+                mascote: (crianca.mascotes && crianca.mascotes.length > 0) ? {
+                    id: crianca.mascotes[0].mascote.id_mascote,
+                    nome: crianca.mascotes[0].mascote.nome,
+                    emoji: crianca.mascotes[0].mascote.emoji,
+                    imagem_url: crianca.mascotes[0].mascote.imagem_url
+                } : null
             },
             tarefas_concluidas_mes: tarefasConcluidasMes,
             missoes_completas: missoesCompletas,
