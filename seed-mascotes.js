@@ -4,7 +4,7 @@ const sequelize = require("./src/config/database");
 const mascotes = [
   {
     nome: 'Kamba Azul',
-    tagline: 'O mascote original!',
+    tagline: 'O personagem original!',
     descricao: 'O teu companheiro clássico, sempre animado para te ajudar a aprender!',
     tipo: 'Robô Espacial',
     emoji: '🤖',
